@@ -19,8 +19,11 @@ const UnassignedTasksScreen = () => {
 
   const fetchTasks = async () => {
     try {
-      const res = await api.get(`/groups/${groupId}/tasks`);
-      setTasks(res.data.filter((t: Task) => !t.assignedUser));
+const res = await api.get('/tasks/unassigned');
+console.log(res.data);
+if(res.data > 0){
+      setTasks(res.data);
+} 
     } catch (err) {
       console.error(err);
     }
@@ -29,12 +32,14 @@ const UnassignedTasksScreen = () => {
   if (!tasks.length) return <Text>Aucune tâche non assignée</Text>;
 
   return (
+      <View style={{ padding: 10, marginBottom: 10, backgroundColor: '#fff' }}>
     <FlatList
       data={tasks}
       keyExtractor={(item) => item.id}
       renderItem={({ item }) => <TaskCard task={item} />}
       contentContainerStyle={styles.list}
     />
+    </View>
   );
 };
 
