@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { View, Text, FlatList, Button, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 
@@ -8,7 +8,7 @@ type Task = {
   description?: string;
   duration: number;
   recurrence: 'none' | 'daily';
-  date: string; // ISO string
+  date: string; 
 };
 
 type Day = {

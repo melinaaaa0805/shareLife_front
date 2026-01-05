@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, FlatList, StyleSheet } from 'react-native';
-import { useRoute, RouteProp, createPathConfigForStaticNavigation } from '@react-navigation/native';
 import api from '../api/api';
 import { Task } from '../types/types';
 import TaskCard from '../components/TaskCard';
@@ -22,7 +21,8 @@ const TasksScreen = () => {
 
   const fetchTasks = async () => {
     try {
-      const res = await api.get(`/groups/${groupId}/tasks`);
+      const res = await api.get(`/task-assignment/users/${currentUserId}`);
+      console.log(res.data);
       const allTasks: Task[] = res.data;
       setTasks(currentUserId ? allTasks.filter(t => t.assignedUser?.id === currentUserId) : allTasks);
     } catch (err) {

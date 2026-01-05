@@ -42,4 +42,5 @@ export type RootStackParamList = {
    UnassignedTasks: { groupId: string };
   AddMember: { groupId: string };
   GroupMembers: { groupId: string };
+  addTask: { day: string; };
 };

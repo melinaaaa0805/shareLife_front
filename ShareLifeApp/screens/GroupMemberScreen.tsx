@@ -17,7 +17,7 @@ const GroupMembersScreen = () => {
 
   const fetchMembers = async () => {
     try {
-      const res = await api.get(`/groups/${groupId}/members`);
+      const res = await api.get(`/group-member/${groupId}`);
       setMembers(res.data);
     } catch (err) {
       console.error(err);

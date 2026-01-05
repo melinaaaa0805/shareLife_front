@@ -21,8 +21,10 @@ import SettingsScreen from '../screens/SettingsScreen';
 import { useAuth } from '../context/AuthContext';
 import { Group } from '../types/types';
 import AddTaskScreen from '../screens/AddTaskScreen';
+import HomeScreen from '../screens/HomeScreen';
 
 export type RootStackParamList = {
+  Home: undefined;
   Login: undefined;
   Register: undefined;
   Groups: undefined;
@@ -36,8 +38,7 @@ export type RootStackParamList = {
   GroupMembers: { groupId: string };
   TasksScreen: { groupId: string; currentUserId: string };
   Settings: undefined;
-  AddTask: {day: string};
-
+  AddTask: {day?: string};
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -86,11 +87,17 @@ export default function AppNavigator() {
 
   return (
     <NavigationContainer>
-      <Stack.Navigator>
+      <Stack.Navigator
+        initialRouteName="Home" // <-- toujours commencer par HomeScreen
+        screenOptions={{ headerShown: false }} // header caché pour HomeScreen et modern look
+      >
+
         {!isAuthenticated ? (
           <>
             <Stack.Screen name="Login" component={LoginScreen} options={{ title: 'Connexion' }} />
             <Stack.Screen name="Register" component={RegisterScreen} options={{ title: 'Inscription' }} />
+                      <Stack.Screen name="Home" component={HomeScreen} />
+
           </>
         ) : (
           <>
