@@ -1,44 +1,58 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, Button, StyleSheet, Alert, KeyboardAvoidingView, TouchableOpacity, Platform } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import api from '../api/api';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../navigation/AppNavigator';
-import { theme } from '../assets/style/theme';
-import LottieView from 'lottie-react-native';
-type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Register'>;
+import React, { useState } from "react";
+import {
+  View,
+  Text,
+  TextInput,
+  Button,
+  StyleSheet,
+  Alert,
+  KeyboardAvoidingView,
+  TouchableOpacity,
+  Platform,
+} from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import api from "../api/api";
+import { useNavigation } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { RootStackParamList } from "../types/types";
+import { theme } from "../assets/style/theme";
+import LottieView from "lottie-react-native";
+type NavigationProp = NativeStackNavigationProp<RootStackParamList, "Register">;
 
 export default function RegisterScreen() {
   const navigation = useNavigation<NavigationProp>();
-  const [firstName, setFirstName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [firstName, setFirstName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
- const handleRegister = async () => {
+  const handleRegister = async () => {
     if (!firstName || !email || !password) {
-      Alert.alert('Erreur', 'Tous les champs sont requis');
+      Alert.alert("Erreur", "Tous les champs sont requis");
       return;
     }
     try {
-      const res = await api.post('/auth/register', { firstName, email, password });
+      const res = await api.post("/auth/register", {
+        firstName,
+        email,
+        password,
+      });
       const token = res.data.access_token;
-      await AsyncStorage.setItem('token', token);
-      navigation.replace('Groups');
+      await AsyncStorage.setItem("token", token);
+      navigation.replace("Groups"); // remplace Home par GroupsScreen
     } catch (error) {
       console.error(error);
-      Alert.alert('Erreur', 'Impossible de créer le compte');
+      Alert.alert("Erreur", "Impossible de créer le compte");
     }
   };
 
- return (
+  return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       <View style={styles.animationWrapper}>
         <LottieView
-          source={require('../assets/lottie/register.json')} 
+          source={require("../assets/lottie/register.json")}
           autoPlay
           loop
           style={styles.lottie}
@@ -86,7 +100,7 @@ export default function RegisterScreen() {
       <TouchableOpacity
         style={styles.loginButton}
         activeOpacity={0.8}
-        onPress={() => navigation.navigate('Login')}
+        onPress={() => navigation.navigate("Login")}
       >
         <Text style={styles.loginButtonText}>Se connecter</Text>
       </TouchableOpacity>
@@ -99,10 +113,10 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.background,
     padding: theme.spacing.lg,
-    justifyContent: 'center',
+    justifyContent: "center",
   },
   animationWrapper: {
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: theme.spacing.xl,
   },
   lottie: {
@@ -113,14 +127,14 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.size.xxl,
     fontFamily: theme.typography.fontFamily.bold,
     color: theme.colors.purple,
-    textAlign: 'center',
+    textAlign: "center",
     marginBottom: theme.spacing.sm,
   },
   subtitle: {
     fontSize: theme.typography.size.md,
     fontFamily: theme.typography.fontFamily.medium,
     color: theme.colors.textSecondary,
-    textAlign: 'center',
+    textAlign: "center",
     marginBottom: theme.spacing.lg,
   },
   inputWrapper: {
@@ -141,7 +155,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.purple,
     paddingVertical: theme.spacing.md,
     borderRadius: theme.radius.lg,
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: theme.spacing.sm,
     ...theme.shadows.soft,
   },
@@ -155,7 +169,7 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.purple,
     paddingVertical: theme.spacing.md,
     borderRadius: theme.radius.lg,
-    alignItems: 'center',
+    alignItems: "center",
   },
   loginButtonText: {
     color: theme.colors.purple,

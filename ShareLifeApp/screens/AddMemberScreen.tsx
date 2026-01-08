@@ -1,18 +1,27 @@
 // src/screens/AddMemberScreen.tsx
-import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, KeyboardAvoidingView, Platform } from 'react-native';
-import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
-import LottieView from 'lottie-react-native';
-import api from '../api/api';
-import { theme } from '../assets/style/theme';
+import React, { useState } from "react";
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+} from "react-native";
+import { useRoute, RouteProp, useNavigation } from "@react-navigation/native";
+import LottieView from "lottie-react-native";
+import api from "../api/api";
+import { theme } from "../assets/style/theme";
 
-type RouteProps = RouteProp<{ params: { groupId: string } }, 'params'>;
+type RouteProps = RouteProp<{ params: { groupId: string } }, "params">;
 
 const AddMemberScreen = () => {
   const route = useRoute<RouteProps>();
   const navigation = useNavigation();
   const { groupId } = route.params;
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleAddMember = async () => {
@@ -20,19 +29,30 @@ const AddMemberScreen = () => {
 
     setLoading(true);
     try {
-      await api.post(`/group-member/${groupId}`, { email: email.trim() });
-      Alert.alert('Succès', 'Membre ajouté !');
+      console.log("groupe id :", groupId);
+      const result = await api.post(`/group-member/${groupId}`, {
+        email: email.trim(),
+      });
+      Alert.alert("Succès", "Membre ajouté !");
+      console.log(result);
+
       navigation.goBack();
     } catch (err: any) {
       console.error(err);
       if (err.response) {
         if (err.response.status === 404) {
-          Alert.alert('Erreur', "L’utilisateur que vous voulez ajouter n’existe pas.");
+          Alert.alert(
+            "Erreur",
+            "L’utilisateur que vous voulez ajouter n’existe pas."
+          );
         } else {
-          Alert.alert('Erreur', err.response.data?.message || 'Impossible d’ajouter le membre.');
+          Alert.alert(
+            "Erreur",
+            err.response.data?.message || "Impossible d’ajouter le membre."
+          );
         }
       } else {
-        Alert.alert('Erreur', 'Impossible de contacter le serveur.');
+        Alert.alert("Erreur", "Impossible de contacter le serveur.");
       }
     } finally {
       setLoading(false);
@@ -42,12 +62,13 @@ const AddMemberScreen = () => {
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       <View style={styles.header}>
         <Text style={styles.title}>Ajouter un membre</Text>
         <Text style={styles.subtitle}>
-          Partagez la charge mentale, invitez vos proches à rejoindre le groupe !
+          Partagez la charge mentale, invitez vos proches à rejoindre le groupe
+          !
         </Text>
       </View>
 
@@ -62,14 +83,20 @@ const AddMemberScreen = () => {
           autoCapitalize="none"
         />
 
-        <TouchableOpacity style={styles.button} onPress={handleAddMember} disabled={loading}>
-          <Text style={styles.buttonText}>{loading ? 'Ajout en cours...' : 'Ajouter'}</Text>
+        <TouchableOpacity
+          style={styles.button}
+          onPress={handleAddMember}
+          disabled={loading}
+        >
+          <Text style={styles.buttonText}>
+            {loading ? "Ajout en cours..." : "Ajouter"}
+          </Text>
         </TouchableOpacity>
       </View>
 
       <View style={styles.lottieContainer}>
         <LottieView
-          source={require('../assets/lottie/add-member.json')} // prends une animation sympa
+          source={require("../assets/lottie/add-member.json")} // prends une animation sympa
           autoPlay
           loop
           style={styles.lottie}
@@ -86,7 +113,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.background,
     padding: theme.spacing.lg,
-    justifyContent: 'space-between',
+    justifyContent: "space-between",
   },
   header: {
     marginTop: theme.spacing.xl,
@@ -117,7 +144,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.purple,
     paddingVertical: theme.spacing.md,
     borderRadius: theme.radius.md,
-    alignItems: 'center',
+    alignItems: "center",
     shadowColor: theme.shadows.soft.shadowColor,
     shadowOffset: theme.shadows.soft.shadowOffset,
     shadowOpacity: theme.shadows.soft.shadowOpacity,
@@ -130,7 +157,7 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.size.md,
   },
   lottieContainer: {
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: theme.spacing.xl,
   },
   lottie: {

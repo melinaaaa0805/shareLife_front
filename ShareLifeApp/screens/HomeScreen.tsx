@@ -1,21 +1,41 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Animated } from 'react-native';
-import { theme } from '../assets/style/theme';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Dimensions,
+  Animated,
+} from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { theme } from '../assets/style/theme';
+import { useAuth } from '../context/AuthContext';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../types/types';
+type HomeScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Home'>;
 
 const { width } = Dimensions.get('window');
 
 const HomeScreen = () => {
-  const navigation = useNavigation();
+
+const navigation = useNavigation<HomeScreenNavigationProp>();
+  const { isAuthenticated, loading } = useAuth();
 
   // Valeurs animées
   const titleOpacity = useRef(new Animated.Value(0)).current;
   const subtitleOpacity = useRef(new Animated.Value(0)).current;
-  const buttonTranslateY = useRef(new Animated.Value(20)).current; // pour effet SlideInUp
+  const buttonTranslateY = useRef(new Animated.Value(20)).current;
   const circleOpacity = useRef(new Animated.Value(0)).current;
 
+  // 🔁 Redirection si connecté
   useEffect(() => {
-    // Chaine d'animations
+    if (!loading && isAuthenticated) {
+      navigation.replace('Groups'); // remplace Home par GroupsScreen
+    }
+  }, [isAuthenticated, loading]);
+
+  // 🔁 Animations à l'affichage
+  useEffect(() => {
     Animated.sequence([
       Animated.timing(titleOpacity, {
         toValue: 1,
@@ -42,6 +62,15 @@ const HomeScreen = () => {
     ]).start();
   }, []);
 
+  // 🔁 Si loading du contexte, on peut afficher un petit message
+  if (loading) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center' }]}>
+        <Text style={{ color: theme.colors.textSecondary }}>Chargement...</Text>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <Animated.Text style={[styles.title, { opacity: titleOpacity }]}>
@@ -52,7 +81,9 @@ const HomeScreen = () => {
         L'impression d'en faire trop ?{'\n'}Cette appli vous permet d'équilibrer et de responsabiliser petit et grand.
       </Animated.Text>
 
-      <Animated.View style={[styles.buttonWrapper, { transform: [{ translateY: buttonTranslateY }] }]}>
+      <Animated.View
+        style={[styles.buttonWrapper, { transform: [{ translateY: buttonTranslateY }] }]}
+      >
         <TouchableOpacity
           style={styles.button}
           onPress={() => navigation.navigate('Register' as never)}

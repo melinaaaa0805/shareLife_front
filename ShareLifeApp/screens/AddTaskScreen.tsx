@@ -1,4 +1,3 @@
-// src/screens/AddTaskScreen.tsx
 import React, { useState } from 'react';
 import {
   View,
@@ -13,50 +12,78 @@ import {
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import api from '../api/api';
-import { RouteProp, useRoute, useNavigation } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import LottieView from 'lottie-react-native';
 import { theme } from '../assets/style/theme';
-
-type AddTaskRouteProp = RouteProp<{ params: { day: string } }, 'params'>;
+import { useGroup } from '../context/GroupContext';
 
 export default function AddTaskScreen() {
-  const route = useRoute<AddTaskRouteProp>();
   const navigation = useNavigation();
-  const { day } = route.params;
+  const group = useGroup();
+  const currentGroup = group.currentGroup;
+  const idGroup = currentGroup?.id;
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [weight, setWeight] = useState(1);
+  const [frequency, setFrequency] = useState<'ONCE' | 'DAILY' | 'WEEKLY'>('ONCE');
   const [duration, setDuration] = useState('');
-  const [recurrence, setRecurrence] = useState<'none' | 'daily'>('none');
+  const [dayOfWeek, setDayOfWeek] = useState<number>(0); // 0 = lundi, 6 = dimanche
   const [loading, setLoading] = useState(false);
 
   const saveTask = async () => {
-    if (!title.trim() || !duration.trim()) {
-      Alert.alert('Erreur', 'Merci de remplir le titre et la durée.');
+    if (!title.trim()) {
+      Alert.alert('Erreur', 'Merci de remplir le titre.');
       return;
     }
 
-    const task = {
+    const today = new Date();
+    const weekNumber = getISOWeek(today);
+    const year = today.getFullYear();
+
+    const taskPayload = {
       title: title.trim(),
-      description: description.trim(),
-      duration: Number(duration),
-      recurrence,
-      date: day,
+      description: description.trim() || undefined,
+      weight,
+      frequency,
+      weekNumber,
+      year,
+      dayOfWeek,
+      duration: duration.trim() ? Number(duration) : null,
+      groupId: idGroup,
+      createdById: null, // backend pourra utiliser req.user.id si auth guard
     };
 
     setLoading(true);
     try {
-      const res = await api.post('/tasks', task);
-      console.log(res.data);
+      await api.post(`/tasks/group/${idGroup}`, taskPayload);
       Alert.alert('Succès', 'Tâche créée avec succès !');
       navigation.goBack();
     } catch (e: any) {
       console.error(e);
-      Alert.alert('Erreur', 'Impossible de créer la tâche.');
+      Alert.alert('Erreur', e.response?.data?.message || 'Impossible de créer la tâche.');
     } finally {
       setLoading(false);
     }
   };
+
+  function getISOWeek(date: Date) {
+    const d = new Date(date);
+    d.setHours(0, 0, 0, 0);
+    d.setDate(d.getDate() + 3 - ((d.getDay() + 6) % 7));
+    const week1 = new Date(d.getFullYear(), 0, 4);
+    return 1 + Math.round(((d.getTime() - week1.getTime()) / 86400000 - 3 + ((week1.getDay() + 6) % 7)) / 7);
+  }
+
+  const days = [
+    { label: 'Lundi', value: 0 },
+    { label: 'Mardi', value: 1 },
+    { label: 'Mercredi', value: 2 },
+    { label: 'Jeudi', value: 3 },
+    { label: 'Vendredi', value: 4 },
+    { label: 'Samedi', value: 5 },
+    { label: 'Dimanche', value: 6 },
+  ];
 
   return (
     <KeyboardAvoidingView
@@ -80,6 +107,7 @@ export default function AddTaskScreen() {
               onChangeText={setTitle}
               style={styles.input}
             />
+
             <TextInput
               placeholder="Description"
               placeholderTextColor={theme.colors.textSecondary}
@@ -88,24 +116,55 @@ export default function AddTaskScreen() {
               style={[styles.input, { height: 80 }]}
               multiline
             />
+
             <TextInput
               placeholder="Durée (minutes)"
+              keyboardType="numeric"
               placeholderTextColor={theme.colors.textSecondary}
               value={duration}
               onChangeText={setDuration}
               style={styles.input}
-              keyboardType="numeric"
             />
 
             <View style={styles.pickerContainer}>
+              <Text style={styles.label}>Jour de la semaine</Text>
               <Picker
-                selectedValue={recurrence}
-                onValueChange={(value: any) => setRecurrence(value as 'none' | 'daily')}
+                selectedValue={dayOfWeek}
+                onValueChange={(val) => setDayOfWeek(Number(val))}
                 style={styles.picker}
                 dropdownIconColor={theme.colors.textPrimary}
               >
-                <Picker.Item label="Aucun" value="none" />
-                <Picker.Item label="Tous les jours" value="daily" />
+                {days.map((d) => (
+                  <Picker.Item key={d.value} label={d.label} value={d.value} />
+                ))}
+              </Picker>
+            </View>
+
+            <View style={styles.pickerContainer}>
+              <Text style={styles.label}>Fréquence</Text>
+              <Picker
+                selectedValue={frequency}
+                onValueChange={(val) => setFrequency(val)}
+                style={styles.picker}
+                dropdownIconColor={theme.colors.textPrimary}
+              >
+                <Picker.Item label="Une fois" value="ONCE" />
+                <Picker.Item label="Tous les jours" value="DAILY" />
+                <Picker.Item label="Chaque semaine" value="WEEKLY" />
+              </Picker>
+            </View>
+
+            <View style={styles.pickerContainer}>
+              <Text style={styles.label}>Importance</Text>
+              <Picker
+                selectedValue={weight}
+                onValueChange={(val) => setWeight(Number(val))}
+                style={styles.picker}
+                dropdownIconColor={theme.colors.textPrimary}
+              >
+                {[1, 2, 3, 4, 5].map((n) => (
+                  <Picker.Item key={n} label={`${n}`} value={n} />
+                ))}
               </Picker>
             </View>
 
@@ -117,7 +176,7 @@ export default function AddTaskScreen() {
 
         <View style={styles.lottieContainer}>
           <LottieView
-            source={require('../assets/lottie/add-task.json')} // animation sympa pour tâches
+            source={require('../assets/lottie/add-task.json')}
             autoPlay
             loop
             style={styles.lottie}
@@ -161,6 +220,13 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.surface,
     borderRadius: theme.radius.md,
     marginBottom: theme.spacing.md,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.xs,
+  },
+  label: {
+    fontFamily: theme.typography.fontFamily.semiBold,
+    color: theme.colors.textPrimary,
+    marginBottom: 4,
   },
   picker: {
     color: theme.colors.textPrimary,
@@ -170,11 +236,6 @@ const styles = StyleSheet.create({
     paddingVertical: theme.spacing.md,
     borderRadius: theme.radius.md,
     alignItems: 'center',
-    shadowColor: theme.shadows.soft.shadowColor,
-    shadowOffset: theme.shadows.soft.shadowOffset,
-    shadowOpacity: theme.shadows.soft.shadowOpacity,
-    shadowRadius: theme.shadows.soft.shadowRadius,
-    elevation: theme.shadows.soft.elevation,
     marginTop: theme.spacing.md,
   },
   buttonText: {
