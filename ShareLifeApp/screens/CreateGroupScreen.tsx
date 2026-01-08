@@ -32,7 +32,8 @@ export default function CreateGroupScreen() {
 
     setLoading(true);
     try {
-      await api.post('/groups', { name: name.trim() });
+      console.log("NAME :", name);
+      await api.post('/groups', { name: name});
       Alert.alert('Succès', 'Groupe créé avec succès !');
       navigation.goBack();
     } catch (error) {

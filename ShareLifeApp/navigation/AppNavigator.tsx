@@ -1,10 +1,16 @@
 import React from 'react';
-import { TouchableOpacity, Text } from 'react-native';
+import { TouchableOpacity, Text, View, StyleSheet } from 'react-native';
 import { NavigationContainer, useNavigation, NavigationProp } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator } from 'react-native';
+import { theme } from '../assets/style/theme';
+import { Ionicons } from '@expo/vector-icons';
+
+import { useAuth } from '../context/AuthContext';
+import { Group } from '../types/types';
+
+import HomeScreen from '../screens/HomeScreen';
 import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
 import GroupsScreen from '../screens/GroupsScreen';
@@ -18,58 +24,53 @@ import GroupMembersScreen from '../screens/GroupMemberScreen';
 import CalendarScreen from '../screens/CalendarScreen';
 import ShoppingListScreen from '../screens/ShoppingListScreen';
 import SettingsScreen from '../screens/SettingsScreen';
-import { useAuth } from '../context/AuthContext';
-import { Group } from '../types/types';
 import AddTaskScreen from '../screens/AddTaskScreen';
-import HomeScreen from '../screens/HomeScreen';
-
-export type RootStackParamList = {
-  Home: undefined;
-  Login: undefined;
-  Register: undefined;
-  Groups: undefined;
-  StartGroup: undefined;
-  MainTabs: undefined;
-  GroupDetail: { groupId: string; group?: Group };
-  CreateGroup: undefined;
-  GroupDashboard: { groupId: string; currentUserId: string };
-  UnassignedTasks: { groupId: string };
-  AddMember: { groupId: string };
-  GroupMembers: { groupId: string };
-  TasksScreen: { groupId: string; currentUserId: string };
-  Settings: undefined;
-  AddTask: {day?: string};
-};
+import DayTasksScreen from '../screens/DayTasksScreen';
+import { RootStackParamList } from '../types/types';
+import ImportTaskScreen from '../screens/ImportTaskScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator();
 
 function MainTabs() {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
+
   return (
     <Tab.Navigator
-      screenOptions={{
-        headerRight: () => (
-          <TouchableOpacity
-            style={{
-              marginRight: 16,
-              width: 36,
-              height: 36,
-              borderRadius: 18,
-              backgroundColor: '#4CAF50',
-              justifyContent: 'center',
-              alignItems: 'center',
-            }}
-            onPress={() => navigation.navigate('Settings')}
-          >
-            <Text style={{ color: 'white', fontWeight: 'bold' }}>⚙️</Text>
-          </TouchableOpacity>
-        ),
-      }}
+      screenOptions={({ route }) => ({
+        headerStyle: {
+          backgroundColor: theme.colors.surface,
+          shadowColor: 'transparent',
+        },
+        headerTitleStyle: {
+          fontFamily: theme.typography.fontFamily.bold,
+          fontSize: theme.typography.size.lg,
+          color: theme.colors.purple,
+        },
+        tabBarStyle: {
+          backgroundColor: theme.colors.surface,
+          borderTopWidth: 0,
+          height: 70,
+          paddingBottom: 10,
+        },
+        tabBarActiveTintColor: theme.colors.purple,
+        tabBarInactiveTintColor: theme.colors.textSecondary,
+        tabBarLabelStyle: { fontFamily: theme.typography.fontFamily.medium },
+
+        tabBarIcon: ({ focused, color, size }) => {
+          let iconName: keyof typeof Ionicons.glyphMap = 'home-outline';
+
+          if (route.name === 'Calendar') iconName = focused ? 'calendar' : 'calendar-outline';
+          else if (route.name === 'Dashboard') iconName = focused ? 'stats-chart' : 'stats-chart-outline';
+          else if (route.name === 'ShoppingList') iconName = focused ? 'cart' : 'cart-outline';
+
+          return <Ionicons name={iconName} size={size} color={color} />;
+        },
+      })}
     >
-      <Tab.Screen name="Calendar" component={CalendarScreen} />
-      <Tab.Screen name="Dashboard" component={GroupDashboardScreen} />
-      <Tab.Screen name="ShoppingList" component={ShoppingListScreen} />
+      <Tab.Screen name="Calendar" component={CalendarScreen} options={{ tabBarLabel: 'Calendrier' }} />
+      <Tab.Screen name="Dashboard" component={GroupDashboardScreen} options={{ tabBarLabel: 'Dashboard' }} />
+      <Tab.Screen name="ShoppingList" component={ShoppingListScreen} options={{ tabBarLabel: 'Courses' }} />
     </Tab.Navigator>
   );
 }
@@ -79,8 +80,8 @@ export default function AppNavigator() {
 
   if (loading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" />
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={theme.colors.purple} />
       </View>
     );
   }
@@ -88,19 +89,26 @@ export default function AppNavigator() {
   return (
     <NavigationContainer>
       <Stack.Navigator
-        initialRouteName="Home" // <-- toujours commencer par HomeScreen
-        screenOptions={{ headerShown: false }} // header caché pour HomeScreen et modern look
+        initialRouteName="Home"
+        screenOptions={{
+          headerStyle: { backgroundColor: theme.colors.surface },
+          headerTitleStyle: {
+            fontFamily: theme.typography.fontFamily.bold,
+            color: theme.colors.purple,
+          },
+          headerTintColor: theme.colors.purple,
+          headerShadowVisible: false,
+        }}
       >
-
         {!isAuthenticated ? (
           <>
+            <Stack.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
             <Stack.Screen name="Login" component={LoginScreen} options={{ title: 'Connexion' }} />
             <Stack.Screen name="Register" component={RegisterScreen} options={{ title: 'Inscription' }} />
-                      <Stack.Screen name="Home" component={HomeScreen} />
-
           </>
         ) : (
           <>
+            <Stack.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
             <Stack.Screen name="Groups" component={GroupsScreen} options={{ title: 'Mes Groupes' }} />
             <Stack.Screen name="MainTabs" component={MainTabs} options={{ headerShown: true, title: 'Mon groupe' }} />
             <Stack.Screen name="GroupDetail" component={GroupDetailScreen} options={{ title: 'Détails du Groupe' }} />
@@ -109,8 +117,9 @@ export default function AppNavigator() {
             <Stack.Screen name="UnassignedTasks" component={UnassignedTasksScreen} options={{ title: 'Tâches non assignées' }} />
             <Stack.Screen name="AddMember" component={AddMemberScreen} options={{ title: 'Ajouter un membre' }} />
             <Stack.Screen name="GroupMembers" component={GroupMembersScreen} options={{ title: 'Membres' }} />
+            <Stack.Screen name="DayTasks" component={DayTasksScreen} />
             <Stack.Screen name="AddTask" component={AddTaskScreen} options={{ title: 'Ajouter une tâche' }} />
-
+            <Stack.Screen name="ImportTask" component={ImportTaskScreen} options={{title: 'Importer une tâche'}} />
             <Stack.Screen name="Settings" component={SettingsScreen} options={{ title: 'Paramètres' }} />
           </>
         )}
@@ -118,3 +127,12 @@ export default function AppNavigator() {
     </NavigationContainer>
   );
 }
+
+const styles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    backgroundColor: theme.colors.background,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+});

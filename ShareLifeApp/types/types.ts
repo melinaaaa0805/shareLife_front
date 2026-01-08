@@ -11,6 +11,8 @@ export interface Group {
   createdAt: string;
   owner: User;
   members?: GroupMember[];
+  membersCount?: number;
+  overdueTasks?: number;
 }
 
 export interface GroupMember {
@@ -21,26 +23,55 @@ export interface GroupMember {
 // types.ts
 
 export type Task = {
-  id: string;                // identifiant unique de la tâche
-  title: string;             // titre de la tâche
-  description?: string;      // description optionnelle
-  completed: boolean;             // statut : réalisée ou non
-  assignedUser?: User;       // id de l'utilisateur assigné (optionnel)
-  groupId: string;           // id du groupe auquel appartient la tâche
-  createdAt: string;         // date de création
-  updatedAt?: string;        // date de dernière modification
+  id: string; // UUID
+  title: string; // défaut "Sans titre"
+  description?: string | null;
+  frequency: 'ONCE' | 'DAILY' | 'WEEKLY';
+  weekNumber: number;
+  year: number;
+  dayOfWeek: number; // 0 = lundi → 6 = dimanche
+  weight: number;
+  done: boolean; // remplace completed
+  duration?: number | null;
+  date?: string | null; // format YYYY-MM-DD
+  group?: Group;
+  createdBy?: User;
+  assignedUser?: User;
+  createdById: string; // UUID de l'utilisateur créateur
+  createdAt: string;
+  updatedAt?: string | null;
+};
+export type RootStackParamList2 = {
+ 
+  Login: undefined;
+  Register: undefined;
+  Groups: undefined;
+  CreateGroup: undefined;
+  GroupDashboard: { groupId: string; currentUserId: string };
+  UnassignedTasks: { groupId: string };
+  AddMember: { groupId: string };
+  GroupMembers: { groupId: string };
+  TasksScreen: { groupId: string; currentUserId: string };
+  AddTask: { day?: string };
+  DayTasks: undefined;
 };
 export type RootStackParamList = {
-  LoginScreen: undefined;
-  RegisterScreen: undefined;
-  GroupsScreen: undefined;
-  CreateGroupScreen: undefined;
-  GroupDashboardScreen: { groupId: string; currentUserId: string };
+   Home: undefined;
+  Login: undefined;
+  Register: undefined;
+  MainTabs: undefined;
+  Groups: undefined;
+  CreateGroup: undefined;
+    GroupDetail: { groupId: string; group?: Group };
+  GroupDashboard: { groupId: string; currentUserId: string };
   TasksScreen: { groupId: string; currentUserId: string };
   TaskDetailScreen: { taskId: string };
   StatsScreen: undefined;
    UnassignedTasks: { groupId: string };
   AddMember: { groupId: string };
   GroupMembers: { groupId: string };
-  addTask: { day: string; };
+  AddTask: undefined;
+    Settings: undefined;
+  DayTasks: { date: string; dayIndex: number }; 
+  ImportTask: {day: string};
 };

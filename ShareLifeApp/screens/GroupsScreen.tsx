@@ -1,39 +1,46 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from "react";
 import {
-  View, Text, FlatList, TouchableOpacity,
-  StyleSheet, ActivityIndicator, Alert
-} from 'react-native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useNavigation } from '@react-navigation/native';
-import { RootStackParamList } from '../navigation/AppNavigator';
-import api from '../api/api';
-import { Group } from '../types/types';
-import { useAuth } from '../context/AuthContext';
-import { theme } from '../assets/style/theme';
-
-type GroupsScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Groups'>;
+  View,
+  Text,
+  FlatList,
+  TouchableOpacity,
+  StyleSheet,
+  ActivityIndicator,
+  Alert,
+} from "react-native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { useNavigation } from "@react-navigation/native";
+import { RootStackParamList } from "../types/types";
+import api from "../api/api";
+import { Group } from "../types/types";
+import { useAuth } from "../context/AuthContext";
+import { theme } from "../assets/style/theme";
+type GroupsScreenNavigationProp = NativeStackNavigationProp<
+  RootStackParamList,
+  "Groups"
+>;
 
 export default function GroupsScreen() {
   const navigation = useNavigation<GroupsScreenNavigationProp>();
   const [groups, setGroups] = useState<Group[]>([]);
   const [loading, setLoading] = useState(true);
-  const { logout } = useAuth();
 
   const fetchGroups = async () => {
     setLoading(true);
     try {
-      const response = await api.get('/groups/me');
+      const response = await api.get("/groups/me");
+      console.log("les groupes", response.data);
       setGroups(response.data);
     } catch (error) {
-      console.error('Erreur groupes:', error);
-      Alert.alert('Erreur', 'Impossible de charger les groupes');
+      console.error("Erreur groupes:", error);
+      Alert.alert("Erreur", "Impossible de charger les groupes");
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    const unsubscribe = navigation.addListener('focus', fetchGroups);
+    const unsubscribe = navigation.addListener("focus", fetchGroups);
     return unsubscribe;
   }, [navigation]);
 
@@ -47,7 +54,6 @@ export default function GroupsScreen() {
 
   return (
     <View style={styles.container}>
-
       <View style={styles.header}>
         <Text style={styles.title}>Mes groupes 🏠</Text>
         <Text style={styles.subtitle}>
@@ -55,38 +61,21 @@ export default function GroupsScreen() {
         </Text>
       </View>
 
-      <TouchableOpacity
-        style={styles.logoutButton}
-        onPress={() => {
-          Alert.alert(
-            "Déconnexion",
-            "Tu es sûre de vouloir te déconnecter ?",
-            [
-              { text: "Annuler", style: "cancel" },
-              { text: "Oui", onPress: logout }
-            ]
-          );
-        }}
-      >
-        <Text style={styles.logoutText}>Déconnexion</Text>
-      </TouchableOpacity>
-
       {!groups.length ? (
         <View style={styles.emptyState}>
           <Text style={styles.emptyTitle}>Aucun groupe pour le moment 👀</Text>
           <Text style={styles.emptyText}>
-            Crée un espace pour ta maison, ajoute des membres, répartis les tâches,
-            et observe la charge mentale diminuer 📉✨
+            Crée un espace pour ta maison, ajoute des membres, répartis les
+            tâches, et observe la charge mentale diminuer 📉✨
           </Text>
           <TouchableOpacity
             style={styles.createFirstButton}
-            onPress={() => navigation.navigate('CreateGroup')}
+            onPress={() => navigation.navigate("CreateGroup")}
           >
             <Text style={styles.createFirstText}>Créer mon premier groupe</Text>
           </TouchableOpacity>
         </View>
       ) : (
-
         /* GROUP LIST */
         <FlatList
           data={groups}
@@ -96,7 +85,12 @@ export default function GroupsScreen() {
           renderItem={({ item }) => (
             <TouchableOpacity
               style={styles.groupCard}
-              onPress={() => navigation.navigate('GroupDetail', { groupId: item.id, group: item })}
+              onPress={() =>
+                navigation.navigate("GroupDetail", {
+                  groupId: item.id,
+                  group: item,
+                })
+              }
             >
               <Text style={styles.groupName}>{item.name}</Text>
 
@@ -118,11 +112,10 @@ export default function GroupsScreen() {
 
       <TouchableOpacity
         style={styles.addButton}
-        onPress={() => navigation.navigate('CreateGroup')}
+        onPress={() => navigation.navigate("CreateGroup")}
       >
         <Text style={styles.addButtonText}>+ Créer un groupe</Text>
       </TouchableOpacity>
-
     </View>
   );
 }
@@ -163,7 +156,7 @@ const styles = StyleSheet.create({
     borderRadius: theme.radius.lg,
     marginBottom: theme.spacing.md,
     ...theme.shadows.soft,
-    position: 'relative',
+    position: "relative",
   },
   groupName: {
     fontFamily: theme.typography.fontFamily.semiBold,
@@ -183,7 +176,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: theme.radius.round,
-    position: 'absolute',
+    position: "absolute",
     top: 12,
     right: 12,
   },
@@ -195,7 +188,7 @@ const styles = StyleSheet.create({
 
   /* ===== LOGOUT BUTTON ===== */
   logoutButton: {
-    alignSelf: 'flex-end',
+    alignSelf: "flex-end",
     backgroundColor: theme.colors.surface,
     paddingHorizontal: 12,
     paddingVertical: 6,
@@ -216,19 +209,19 @@ const styles = StyleSheet.create({
     borderRadius: theme.radius.lg,
     padding: theme.spacing.lg,
     marginTop: 20,
-    alignItems: 'center',
+    alignItems: "center",
   },
   emptyTitle: {
     fontFamily: theme.typography.fontFamily.bold,
     fontSize: theme.typography.size.lg,
     color: theme.colors.pink,
-    textAlign: 'center',
+    textAlign: "center",
   },
   emptyText: {
     fontFamily: theme.typography.fontFamily.regular,
     fontSize: theme.typography.size.md,
     color: theme.colors.textSecondary,
-    textAlign: 'center',
+    textAlign: "center",
     marginTop: 8,
     marginBottom: 16,
   },
@@ -246,14 +239,14 @@ const styles = StyleSheet.create({
 
   /* ===== ADD BUTTON ===== */
   addButton: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 40,
     left: 20,
     right: 20,
     backgroundColor: theme.colors.purple,
     padding: theme.spacing.md,
     borderRadius: theme.radius.lg,
-    alignItems: 'center',
+    alignItems: "center",
   },
   addButtonText: {
     fontFamily: theme.typography.fontFamily.bold,
@@ -264,8 +257,8 @@ const styles = StyleSheet.create({
   /* ===== CENTER LOADING ===== */
   center: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     backgroundColor: theme.colors.background,
   },
 });
