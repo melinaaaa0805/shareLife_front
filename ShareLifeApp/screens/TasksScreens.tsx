@@ -1,14 +1,13 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, StyleSheet } from 'react-native';
-import api from '../api/api';
-import { Task } from '../types/types';
-import TaskCard from '../components/TaskCard';
-import { useGroup } from '../context/GroupContext';
-import { useAuth } from '../context/AuthContext';
-
+import React, { useEffect, useState } from "react";
+import { View, Text, FlatList, StyleSheet } from "react-native";
+import api from "../api/api";
+import { Task } from "../types/types";
+import TaskCard from "../components/TaskCard";
+import { useGroup } from "../context/GroupContext";
+import { useAuth } from "../context/AuthContext";
 
 const TasksScreen = () => {
-  const { currentGroup} = useGroup();
+  const { currentGroup } = useGroup();
   const { user } = useAuth();
   const groupId = currentGroup?.id;
   const currentUserId = user?.id;
@@ -22,9 +21,7 @@ const TasksScreen = () => {
   const fetchTasks = async () => {
     try {
       const res = await api.get(`/task-assignment/users/${currentUserId}`);
-      console.log(res.data);
-      const allTasks: Task[] = res.data;
-      setTasks(currentUserId ? allTasks.filter(t => t.assignedUser?.id === currentUserId) : allTasks);
+      setTasks(res.data);
     } catch (err) {
       console.error(err);
     } finally {

@@ -26,7 +26,7 @@ export type Task = {
   id: string; // UUID
   title: string; // défaut "Sans titre"
   description?: string | null;
-  frequency: 'ONCE' | 'DAILY' | 'WEEKLY';
+  frequency: "ONCE" | "DAILY" | "WEEKLY";
   weekNumber: number;
   year: number;
   dayOfWeek: number; // 0 = lundi → 6 = dimanche
@@ -41,37 +41,25 @@ export type Task = {
   createdAt: string;
   updatedAt?: string | null;
 };
-export type RootStackParamList2 = {
- 
-  Login: undefined;
-  Register: undefined;
-  Groups: undefined;
-  CreateGroup: undefined;
-  GroupDashboard: { groupId: string; currentUserId: string };
-  UnassignedTasks: { groupId: string };
-  AddMember: { groupId: string };
-  GroupMembers: { groupId: string };
-  TasksScreen: { groupId: string; currentUserId: string };
-  AddTask: { day?: string };
-  DayTasks: undefined;
-};
+
 export type RootStackParamList = {
-   Home: undefined;
+  Home: undefined;
   Login: undefined;
   Register: undefined;
   MainTabs: undefined;
   Groups: undefined;
+  Calendar: undefined;
   CreateGroup: undefined;
-    GroupDetail: { groupId: string; group?: Group };
+  GroupDetail: { groupId: string; group?: Group };
   GroupDashboard: { groupId: string; currentUserId: string };
   TasksScreen: { groupId: string; currentUserId: string };
   TaskDetailScreen: { taskId: string };
   StatsScreen: undefined;
-   UnassignedTasks: { groupId: string };
+  UnassignedTasks: { groupId: string };
   AddMember: { groupId: string };
   GroupMembers: { groupId: string };
-  AddTask: undefined;
-    Settings: undefined;
-  DayTasks: { date: string; dayIndex: number }; 
-  ImportTask: {day: string};
+  AddTask: { task?: Task | undefined };
+  Settings: undefined;
+  DayTasks: { date: string; dayIndex: number };
+  ImportTask: { day: string };
 };

@@ -10,13 +10,12 @@ import {
   TouchableOpacity,
   Platform,
 } from "react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import api from "../api/api";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../types/types";
 import { theme } from "../assets/style/theme";
 import LottieView from "lottie-react-native";
+import { useAuth } from "../context/AuthContext";
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, "Register">;
 
 export default function RegisterScreen() {
@@ -24,6 +23,7 @@ export default function RegisterScreen() {
   const [firstName, setFirstName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const { register } = useAuth();
 
   const handleRegister = async () => {
     if (!firstName || !email || !password) {
@@ -31,14 +31,8 @@ export default function RegisterScreen() {
       return;
     }
     try {
-      const res = await api.post("/auth/register", {
-        firstName,
-        email,
-        password,
-      });
-      const token = res.data.access_token;
-      await AsyncStorage.setItem("token", token);
-      navigation.replace("Groups"); // remplace Home par GroupsScreen
+      register(firstName, email, password);
+      Alert.alert("Votre compte a bien été créé !");
     } catch (error) {
       console.error(error);
       Alert.alert("Erreur", "Impossible de créer le compte");
