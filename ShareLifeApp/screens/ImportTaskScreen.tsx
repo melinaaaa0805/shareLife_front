@@ -11,22 +11,13 @@ import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import api from "../api/api";
 import { theme } from "../assets/style/theme";
-import { RootStackParamList } from "../types/types";
+import { RootStackParamList, Task } from "../types/types";
 import { useGroup } from "../context/GroupContext";
 type NavigationProp = NativeStackNavigationProp<
   RootStackParamList,
   "ImportTask"
 >;
 type ImportTaskRouteProp = RouteProp<RootStackParamList, "ImportTask">;
-
-type Task = {
-  id: string;
-  title: string;
-  description?: string | null;
-  duration: number | null;
-  frequency: "ONCE" | "DAILY" | "WEEKLY";
-  dayOfWeek: number;
-};
 
 export default function ImportTaskScreen() {
   const navigation = useNavigation<NavigationProp>();
@@ -95,7 +86,16 @@ export default function ImportTaskScreen() {
         renderItem={({ item }) => (
           <TouchableOpacity
             style={styles.taskItem}
-            onPress={() => handleImportTask(item)}
+            onPress={() =>
+              navigation.navigate("AddTask", {
+                task: {
+                  ...item,
+                  weekNumber: item.weekNumber ?? new Date(day).getDay(),
+                  year: item.year ?? new Date(day).getFullYear(),
+                  weight: item.weight ?? 1,
+                },
+              })
+            }
           >
             <Text style={styles.taskTitle}>{item.title}</Text>
             {item.description ? (

@@ -1,33 +1,37 @@
-import React from 'react';
-import { TouchableOpacity, Text, View, StyleSheet } from 'react-native';
-import { NavigationContainer, useNavigation, NavigationProp } from '@react-navigation/native';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { ActivityIndicator } from 'react-native';
-import { theme } from '../assets/style/theme';
-import { Ionicons } from '@expo/vector-icons';
+import React from "react";
+import { TouchableOpacity, Text, View, StyleSheet } from "react-native";
+import {
+  NavigationContainer,
+  useNavigation,
+  NavigationProp,
+} from "@react-navigation/native";
+import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import { ActivityIndicator } from "react-native";
+import { theme } from "../assets/style/theme";
+import { Ionicons } from "@expo/vector-icons";
 
-import { useAuth } from '../context/AuthContext';
-import { Group } from '../types/types';
+import { useAuth } from "../context/AuthContext";
+import { Group } from "../types/types";
 
-import HomeScreen from '../screens/HomeScreen';
-import LoginScreen from '../screens/LoginScreen';
-import RegisterScreen from '../screens/RegisterScreen';
-import GroupsScreen from '../screens/GroupsScreen';
-import GroupDetailScreen from '../screens/GroupDetailScreen';
-import CreateGroupScreen from '../screens/CreateGroupScreen';
-import GroupDashboardScreen from '../screens/GroupDashboardScreen';
-import TasksScreen from '../screens/TasksScreens';
-import UnassignedTasksScreen from '../screens/UnassignedScreen';
-import AddMemberScreen from '../screens/AddMemberScreen';
-import GroupMembersScreen from '../screens/GroupMemberScreen';
-import CalendarScreen from '../screens/CalendarScreen';
-import ShoppingListScreen from '../screens/ShoppingListScreen';
-import SettingsScreen from '../screens/SettingsScreen';
-import AddTaskScreen from '../screens/AddTaskScreen';
-import DayTasksScreen from '../screens/DayTasksScreen';
-import { RootStackParamList } from '../types/types';
-import ImportTaskScreen from '../screens/ImportTaskScreen';
+import HomeScreen from "../screens/HomeScreen";
+import LoginScreen from "../screens/LoginScreen";
+import RegisterScreen from "../screens/RegisterScreen";
+import GroupsScreen from "../screens/GroupsScreen";
+import GroupDetailScreen from "../screens/GroupDetailScreen";
+import CreateGroupScreen from "../screens/CreateGroupScreen";
+import GroupDashboardScreen from "../screens/GroupDashboardScreen";
+import TasksScreen from "../screens/TasksScreens";
+import UnassignedTasksScreen from "../screens/UnassignedScreen";
+import AddMemberScreen from "../screens/AddMemberScreen";
+import GroupMembersScreen from "../screens/GroupMemberScreen";
+import CalendarScreen from "../screens/CalendarScreen";
+import ShoppingListScreen from "../screens/ShoppingListScreen";
+import SettingsScreen from "../screens/SettingsScreen";
+import AddTaskScreen from "../screens/AddTaskScreen";
+import DayTasksScreen from "../screens/DayTasksScreen";
+import { RootStackParamList } from "../types/types";
+import ImportTaskScreen from "../screens/ImportTaskScreen";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator();
@@ -38,9 +42,10 @@ function MainTabs() {
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
+        headerShown: false,
         headerStyle: {
           backgroundColor: theme.colors.surface,
-          shadowColor: 'transparent',
+          shadowColor: "transparent",
         },
         headerTitleStyle: {
           fontFamily: theme.typography.fontFamily.bold,
@@ -58,19 +63,34 @@ function MainTabs() {
         tabBarLabelStyle: { fontFamily: theme.typography.fontFamily.medium },
 
         tabBarIcon: ({ focused, color, size }) => {
-          let iconName: keyof typeof Ionicons.glyphMap = 'home-outline';
+          let iconName: keyof typeof Ionicons.glyphMap = "home-outline";
 
-          if (route.name === 'Calendar') iconName = focused ? 'calendar' : 'calendar-outline';
-          else if (route.name === 'Dashboard') iconName = focused ? 'stats-chart' : 'stats-chart-outline';
-          else if (route.name === 'ShoppingList') iconName = focused ? 'cart' : 'cart-outline';
+          if (route.name === "Calendar")
+            iconName = focused ? "calendar" : "calendar-outline";
+          else if (route.name === "Dashboard")
+            iconName = focused ? "stats-chart" : "stats-chart-outline";
+          else if (route.name === "ShoppingList")
+            iconName = focused ? "cart" : "cart-outline";
 
           return <Ionicons name={iconName} size={size} color={color} />;
         },
       })}
     >
-      <Tab.Screen name="Calendar" component={CalendarScreen} options={{ tabBarLabel: 'Calendrier' }} />
-      <Tab.Screen name="Dashboard" component={GroupDashboardScreen} options={{ tabBarLabel: 'Dashboard' }} />
-      <Tab.Screen name="ShoppingList" component={ShoppingListScreen} options={{ tabBarLabel: 'Courses' }} />
+      <Tab.Screen
+        name="Calendar"
+        component={CalendarScreen}
+        options={{ tabBarLabel: "Calendrier" }}
+      />
+      <Tab.Screen
+        name="Dashboard"
+        component={GroupDashboardScreen}
+        options={{ tabBarLabel: "Dashboard" }}
+      />
+      <Tab.Screen
+        name="ShoppingList"
+        component={ShoppingListScreen}
+        options={{ tabBarLabel: "Courses" }}
+      />
     </Tab.Navigator>
   );
 }
@@ -102,25 +122,85 @@ export default function AppNavigator() {
       >
         {!isAuthenticated ? (
           <>
-            <Stack.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
-            <Stack.Screen name="Login" component={LoginScreen} options={{ title: 'Connexion' }} />
-            <Stack.Screen name="Register" component={RegisterScreen} options={{ title: 'Inscription' }} />
+            <Stack.Screen
+              name="Home"
+              component={HomeScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="Login"
+              component={LoginScreen}
+              options={{ title: "Connexion" }}
+            />
+            <Stack.Screen
+              name="Register"
+              component={RegisterScreen}
+              options={{ title: "Inscription" }}
+            />
           </>
         ) : (
           <>
-            <Stack.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
-            <Stack.Screen name="Groups" component={GroupsScreen} options={{ title: 'Mes Groupes' }} />
-            <Stack.Screen name="MainTabs" component={MainTabs} options={{ headerShown: true, title: 'Mon groupe' }} />
-            <Stack.Screen name="GroupDetail" component={GroupDetailScreen} options={{ title: 'Détails du Groupe' }} />
-            <Stack.Screen name="CreateGroup" component={CreateGroupScreen} options={{ title: 'Créer un Groupe' }} />
-            <Stack.Screen name="TasksScreen" component={TasksScreen} options={{ title: 'Tâches' }} />
-            <Stack.Screen name="UnassignedTasks" component={UnassignedTasksScreen} options={{ title: 'Tâches non assignées' }} />
-            <Stack.Screen name="AddMember" component={AddMemberScreen} options={{ title: 'Ajouter un membre' }} />
-            <Stack.Screen name="GroupMembers" component={GroupMembersScreen} options={{ title: 'Membres' }} />
+            <Stack.Screen
+              name="Home"
+              component={HomeScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="Groups"
+              component={GroupsScreen}
+              options={{ title: "Mes Groupes" }}
+            />
+            <Stack.Screen
+              name="MainTabs"
+              component={MainTabs}
+              options={{ headerShown: true, title: "Mon groupe" }}
+            />
+            <Stack.Screen
+              name="GroupDetail"
+              component={GroupDetailScreen}
+              options={{ title: "Détails du Groupe" }}
+            />
+            <Stack.Screen
+              name="CreateGroup"
+              component={CreateGroupScreen}
+              options={{ title: "Créer un Groupe" }}
+            />
+            <Stack.Screen
+              name="TasksScreen"
+              component={TasksScreen}
+              options={{ title: "Tâches" }}
+            />
+            <Stack.Screen
+              name="UnassignedTasks"
+              component={UnassignedTasksScreen}
+              options={{ title: "Tâches non assignées" }}
+            />
+            <Stack.Screen
+              name="AddMember"
+              component={AddMemberScreen}
+              options={{ title: "Ajouter un membre" }}
+            />
+            <Stack.Screen
+              name="GroupMembers"
+              component={GroupMembersScreen}
+              options={{ title: "Membres" }}
+            />
             <Stack.Screen name="DayTasks" component={DayTasksScreen} />
-            <Stack.Screen name="AddTask" component={AddTaskScreen} options={{ title: 'Ajouter une tâche' }} />
-            <Stack.Screen name="ImportTask" component={ImportTaskScreen} options={{title: 'Importer une tâche'}} />
-            <Stack.Screen name="Settings" component={SettingsScreen} options={{ title: 'Paramètres' }} />
+            <Stack.Screen
+              name="AddTask"
+              component={AddTaskScreen}
+              options={{ title: "Ajouter une tâche" }}
+            />
+            <Stack.Screen
+              name="ImportTask"
+              component={ImportTaskScreen}
+              options={{ title: "Importer une tâche" }}
+            />
+            <Stack.Screen
+              name="Settings"
+              component={SettingsScreen}
+              options={{ title: "Paramètres" }}
+            />
           </>
         )}
       </Stack.Navigator>
@@ -132,7 +212,7 @@ const styles = StyleSheet.create({
   loadingContainer: {
     flex: 1,
     backgroundColor: theme.colors.background,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
 });
