@@ -3,8 +3,9 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { storage } from "../services/storage";
 import { Alert } from "react-native";
 import { useAuth } from "../context/AuthContext";
+import Constants from "expo-constants";
 
-const API_URL = process.env.REACT_APP_API_URL;
+const API_URL = Constants.expoConfig?.extra?.apiUrl;
 const api = axios.create({
   baseURL: API_URL, // change selon ton backend
 });
