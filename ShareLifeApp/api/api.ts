@@ -3,8 +3,10 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { storage } from "../services/storage";
 import { Alert } from "react-native";
 import { useAuth } from "../context/AuthContext";
+
+const API_URL = process.env.REACT_APP_API_URL;
 const api = axios.create({
-  baseURL: "http://localhost:3000", // change selon ton backend
+  baseURL: API_URL, // change selon ton backend
 });
 
 // Ajouter le token à chaque requête
