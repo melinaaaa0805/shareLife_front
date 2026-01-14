@@ -14,7 +14,7 @@ import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../types/types";
 import { theme } from "../assets/style/theme";
-import LottieView from "lottie-react-native";
+import LottieView from "../components/LottieAnimation";
 import { useAuth } from "../context/AuthContext";
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, "Register">;
 

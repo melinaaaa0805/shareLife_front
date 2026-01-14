@@ -1,24 +1,33 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, Alert } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { useAuth } from '../context/AuthContext';
-import { theme } from '../assets/style/theme';
-import LottieView from 'lottie-react-native';
+import React, { useState } from "react";
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  KeyboardAvoidingView,
+  Platform,
+  Alert,
+} from "react-native";
+import { useNavigation } from "@react-navigation/native";
+import { useAuth } from "../context/AuthContext";
+import { theme } from "../assets/style/theme";
+import LottieView from "../components/LottieAnimation";
 
 export default function LoginScreen() {
   const navigation = useNavigation();
   const { login } = useAuth();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       <View style={styles.animationWrapper}>
         <LottieView
-          source={require('../assets/lottie/login.json')} 
+          source={require("../assets/lottie/login.json")}
           autoPlay
           loop
           style={styles.lottie}
@@ -28,7 +37,6 @@ export default function LoginScreen() {
       <Text style={styles.title}>Bienvenue</Text>
       <Text style={styles.subtitle}>Connectez-vous pour continuer</Text>
 
-      {/* Inputs */}
       <View style={styles.inputWrapper}>
         <TextInput
           style={styles.input}
@@ -49,7 +57,6 @@ export default function LoginScreen() {
         />
       </View>
 
-      {/* Boutons */}
       <TouchableOpacity
         style={styles.loginButton}
         activeOpacity={0.8}
@@ -61,7 +68,7 @@ export default function LoginScreen() {
       <TouchableOpacity
         style={styles.registerButton}
         activeOpacity={0.8}
-        onPress={() => navigation.navigate('Register' as never)}
+        onPress={() => navigation.navigate("Register" as never)}
       >
         <Text style={styles.registerButtonText}>Créer un compte</Text>
       </TouchableOpacity>
@@ -74,10 +81,10 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.background,
     padding: theme.spacing.lg,
-    justifyContent: 'center',
+    justifyContent: "center",
   },
   animationWrapper: {
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: theme.spacing.xl,
   },
   lottie: {
@@ -88,14 +95,14 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.size.xxl,
     fontFamily: theme.typography.fontFamily.bold,
     color: theme.colors.purple,
-    textAlign: 'center',
+    textAlign: "center",
     marginBottom: theme.spacing.sm,
   },
   subtitle: {
     fontSize: theme.typography.size.md,
     fontFamily: theme.typography.fontFamily.medium,
     color: theme.colors.textSecondary,
-    textAlign: 'center',
+    textAlign: "center",
     marginBottom: theme.spacing.lg,
   },
   inputWrapper: {
@@ -116,7 +123,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.purple,
     paddingVertical: theme.spacing.md,
     borderRadius: theme.radius.lg,
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: theme.spacing.sm,
     ...theme.shadows.soft,
   },
@@ -130,7 +137,7 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.purple,
     paddingVertical: theme.spacing.md,
     borderRadius: theme.radius.lg,
-    alignItems: 'center',
+    alignItems: "center",
   },
   registerButtonText: {
     color: theme.colors.purple,

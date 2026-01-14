@@ -11,7 +11,7 @@ import {
   Platform,
 } from "react-native";
 import { useRoute, RouteProp, useNavigation } from "@react-navigation/native";
-import LottieView from "lottie-react-native";
+import LottieView from "../components/LottieAnimation";
 import api from "../api/api";
 import { theme } from "../assets/style/theme";
 

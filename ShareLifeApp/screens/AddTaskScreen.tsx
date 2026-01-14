@@ -8,7 +8,7 @@ import {
   Platform,
   Alert,
 } from "react-native";
-import LottieView from "lottie-react-native";
+import LottieView from "../components/LottieAnimation";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { theme } from "../assets/style/theme";
 import api from "../api/api";

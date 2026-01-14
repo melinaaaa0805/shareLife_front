@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
-import * as SecureStore from "expo-secure-store";
+import { storage } from "../services/storage";
 import api from "../api/api";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
@@ -33,7 +33,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   // 🔁 Vérification au démarrage
   useEffect(() => {
     const loadAuth = async () => {
-      const token = await SecureStore.getItemAsync("token");
+      const token = await storage.getItem("token");
       if (token) {
         try {
           const res = await api.get("/auth/me");
@@ -49,9 +49,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const login = async (email: string, password: string) => {
     const res = await api.post("/auth/login", { email, password });
-    await SecureStore.setItemAsync("token", res.data.access_token);
+    await storage.setItem("token", res.data.access_token);
     await AsyncStorage.setItem("email", email);
-
+    console.log("USER :", res.data.user);
     setUser(res.data.user);
   };
 
@@ -65,13 +65,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       password,
       firstName,
     });
-    await SecureStore.setItemAsync("token", res.data.access_token);
+    await storage.setItem("token", res.data.access_token);
     await AsyncStorage.setItem("email", email);
     setUser(res.data.user);
   };
 
   const logout = async () => {
-    await SecureStore.deleteItemAsync("token");
+    await storage.removeItem("token");
     await AsyncStorage.removeItem("email");
     setUser(null);
   };

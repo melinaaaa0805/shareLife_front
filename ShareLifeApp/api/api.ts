@@ -1,15 +1,15 @@
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import * as SecureStore from "expo-secure-store";
+import { storage } from "../services/storage";
 import { Alert } from "react-native";
 import { useAuth } from "../context/AuthContext";
 const api = axios.create({
-  baseURL: "http://192.168.1.24:3000", // change selon ton backend
+  baseURL: "http://localhost:3000", // change selon ton backend
 });
 
 // Ajouter le token à chaque requête
 api.interceptors.request.use(async (config) => {
-  const token = await SecureStore.getItemAsync("token");
+  const token = await storage.getItem("token");
 
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
@@ -21,10 +21,8 @@ api.interceptors.response.use(
   (response) => response,
   async (error) => {
     if (error.response?.status === 401) {
-      const { logout } = useAuth();
       console.log("JWT expiré ou invalide → déconnexion");
 
-      logout();
       // Option simple (au début)
       Alert.alert("Session expirée", "Veuillez vous reconnecter");
     }

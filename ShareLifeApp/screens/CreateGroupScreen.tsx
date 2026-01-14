@@ -1,5 +1,5 @@
 // src/screens/CreateGroupScreen.tsx
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -9,36 +9,39 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
-} from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../navigation/AppNavigator';
-import api from '../api/api';
-import LottieView from 'lottie-react-native';
-import { theme } from '../assets/style/theme';
+} from "react-native";
+import { useNavigation } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { RootStackParamList } from "../navigation/AppNavigator";
+import api from "../api/api";
+import LottieView from "../components/LottieAnimation";
+import { theme } from "../assets/style/theme";
 
-type CreateGroupScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'CreateGroup'>;
+type CreateGroupScreenNavigationProp = NativeStackNavigationProp<
+  RootStackParamList,
+  "CreateGroup"
+>;
 
 export default function CreateGroupScreen() {
   const navigation = useNavigation<CreateGroupScreenNavigationProp>();
-  const [name, setName] = useState('');
+  const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleCreateGroup = async () => {
     if (!name.trim()) {
-      Alert.alert('Erreur', 'Le nom du groupe est requis.');
+      Alert.alert("Erreur", "Le nom du groupe est requis.");
       return;
     }
 
     setLoading(true);
     try {
       console.log("NAME :", name);
-      await api.post('/groups', { name: name});
-      Alert.alert('Succès', 'Groupe créé avec succès !');
+      await api.post("/groups", { name: name });
+      Alert.alert("Succès", "Groupe créé avec succès !");
       navigation.goBack();
     } catch (error) {
       console.error(error);
-      Alert.alert('Erreur', 'Impossible de créer le groupe.');
+      Alert.alert("Erreur", "Impossible de créer le groupe.");
     } finally {
       setLoading(false);
     }
@@ -47,7 +50,7 @@ export default function CreateGroupScreen() {
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       <View style={styles.header}>
         <Text style={styles.title}>Créer un groupe</Text>
@@ -65,14 +68,20 @@ export default function CreateGroupScreen() {
           style={styles.input}
         />
 
-        <TouchableOpacity style={styles.button} onPress={handleCreateGroup} disabled={loading}>
-          <Text style={styles.buttonText}>{loading ? 'Création...' : 'Créer'}</Text>
+        <TouchableOpacity
+          style={styles.button}
+          onPress={handleCreateGroup}
+          disabled={loading}
+        >
+          <Text style={styles.buttonText}>
+            {loading ? "Création..." : "Créer"}
+          </Text>
         </TouchableOpacity>
       </View>
 
       <View style={styles.lottieContainer}>
         <LottieView
-          source={require('../assets/lottie/create-group.json')} // animation sympa pour création
+          source={require("../assets/lottie/create-group.json")} // animation sympa pour création
           autoPlay
           loop
           style={styles.lottie}
@@ -87,7 +96,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.background,
     padding: theme.spacing.lg,
-    justifyContent: 'space-between',
+    justifyContent: "space-between",
   },
   header: {
     marginTop: theme.spacing.xl,
@@ -118,7 +127,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.purple,
     paddingVertical: theme.spacing.md,
     borderRadius: theme.radius.md,
-    alignItems: 'center',
+    alignItems: "center",
     shadowColor: theme.shadows.soft.shadowColor,
     shadowOffset: theme.shadows.soft.shadowOffset,
     shadowOpacity: theme.shadows.soft.shadowOpacity,
@@ -132,7 +141,7 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.size.md,
   },
   lottieContainer: {
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: theme.spacing.xl,
   },
   lottie: {
