@@ -1,32 +1,34 @@
-# Étape 1 : image Node pour build
-FROM node:20-alpine AS builder
+# ========= ÉTAPE 1 : BUILD =========
+FROM node:20-bullseye AS builder
 
-# Répertoire de travail
 WORKDIR /app
 
-# Copier package.json et package-lock.json pour installer les deps
+# Dépendances système nécessaires
+RUN apt-get update && apt-get install -y python3 make g++
+
+# Installer les dépendances JS
 COPY package*.json ./
+RUN npm install --legacy-peer-deps --no-audit
 
-# Installer les dépendances
-RUN npm install
-
-# Copier le reste du projet
+# Copier le code
 COPY . .
 
-# Build Expo Web en production
-RUN npx expo run:web --no-dev --minify
+# Build Expo Web (statique)
+RUN npx expo export
 
-# Étape 2 : image légère pour servir le build
+# ========= ÉTAPE 2 : SERVEUR =========
 FROM nginx:alpine
 
-# Copier le build depuis l'étape précédente
-COPY --from=builder /app/web-build /usr/share/nginx/html
+# Cloud Run écoute sur 8080
+EXPOSE 8080
 
-# Copier le fichier de config nginx si tu veux (optionnel)
-# COPY nginx.conf /etc/nginx/conf.d/default.conf
+# Supprimer config nginx par défaut
+RUN rm /etc/nginx/conf.d/default.conf
 
-# Exposer le port 80
-EXPOSE 80
+# Config nginx simple SPA
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Démarrer nginx
+# Copier le build Expo
+COPY --from=builder /app/dist /usr/share/nginx/html
+
 CMD ["nginx", "-g", "daemon off;"]

@@ -1,0 +1,43 @@
+name: Deploy Frontend to Cloud Run
+
+on:
+  push:
+    branches:
+      - deploiement # branche sur laquelle le déploiement se fait automatiquement
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1️⃣ Checkout du repo
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      # 2️⃣ Configure Google Cloud SDK
+      - name: Setup Google Cloud
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: sharelife-web # ton Project ID
+          service_account_key: ${{ secrets.GCP_SA_KEY }}
+          export_default_credentials: true
+
+      # 3️⃣ Build l'image Docker
+      - name: Build Docker image
+        run: |
+          docker build -t gcr.io/sharelife-web/sharelife-frontend .
+
+      # 4️⃣ Push vers GCR
+      - name: Push Docker image
+        run: |
+          docker push gcr.io/sharelife-web/sharelife-frontend
+
+      # 5️⃣ Déployer sur Cloud Run
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy sharelife-frontend \
+            --image gcr.io/sharelife-web/sharelife-frontend \
+            --platform managed \
+            --region europe-north1 \
+            --allow-unauthenticated \
+            --port 8080
