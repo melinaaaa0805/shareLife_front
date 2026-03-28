@@ -5,6 +5,8 @@ export interface User {
   lastName: string;
 }
 
+export type GroupMode = 'FREE' | 'FUNNY';
+
 export interface Group {
   id: string;
   name: string;
@@ -13,6 +15,8 @@ export interface Group {
   members?: GroupMember[];
   membersCount?: number;
   overdueTasks?: number;
+  mode?: GroupMode;
+  weeklyAdmin?: User | null;
 }
 
 export interface GroupMember {
@@ -62,4 +66,6 @@ export type RootStackParamList = {
   Settings: undefined;
   DayTasks: { date: string; dayIndex: number };
   ImportTask: { day: string };
+  SpinWheel: { groupId: string; members: GroupMember[] };
+  ForgotPassword: undefined;
 };

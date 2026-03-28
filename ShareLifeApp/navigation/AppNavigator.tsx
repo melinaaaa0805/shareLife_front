@@ -32,6 +32,8 @@ import AddTaskScreen from "../screens/AddTaskScreen";
 import DayTasksScreen from "../screens/DayTasksScreen";
 import { RootStackParamList } from "../types/types";
 import ImportTaskScreen from "../screens/ImportTaskScreen";
+import SpinWheelScreen from "../screens/SpinWheelScreen";
+import ForgotPasswordScreen from "../screens/ForgotPasswordScreen";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator();
@@ -148,7 +150,7 @@ export default function AppNavigator() {
             <Stack.Screen
               name="Groups"
               component={GroupsScreen}
-              options={{ title: "Mes Groupes" }}
+              options={{ title: "Accueil", headerShown: false }}
             />
             <Stack.Screen
               name="MainTabs"
@@ -201,8 +203,20 @@ export default function AppNavigator() {
               component={SettingsScreen}
               options={{ title: "Paramètres" }}
             />
+            <Stack.Screen
+              name="SpinWheel"
+              component={SpinWheelScreen}
+              options={{ title: "Tirage au sort" }}
+            />
           </>
         )}
+
+        {/* Toujours disponible, auth ou non */}
+        <Stack.Screen
+          name="ForgotPassword"
+          component={ForgotPasswordScreen}
+          options={{ title: "Mot de passe oublié" }}
+        />
       </Stack.Navigator>
     </NavigationContainer>
   );

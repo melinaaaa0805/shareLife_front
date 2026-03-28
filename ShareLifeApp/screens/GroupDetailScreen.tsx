@@ -2,27 +2,39 @@ import React, { useEffect, useState, useRef } from "react";
 import {
   View,
   Text,
-  FlatList,
+  ScrollView,
   TouchableOpacity,
+  Pressable,
   StyleSheet,
   Animated,
   Easing,
+  Alert,
+  Platform,
 } from "react-native";
 import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useFocusEffect } from "@react-navigation/native";
 import api from "../api/api";
-import { RootStackParamList } from "../types/types";
-import { Group } from "../types/types";
+import { RootStackParamList, Group, GroupMode } from "../types/types";
 import { useGroup } from "../context/GroupContext";
 import { theme } from "../assets/style/theme";
 import MemberItem from "../components/MemberItem";
 
 type GroupDetailRouteProp = RouteProp<RootStackParamList, "GroupDetail">;
-type GroupDetailNavigationProp = NativeStackNavigationProp<
-  RootStackParamList,
-  "GroupDetail"
->;
+type GroupDetailNavigationProp = NativeStackNavigationProp<RootStackParamList, "GroupDetail">;
+
+const GROUP_COLORS = [
+  theme.colors.purple,
+  theme.colors.pink,
+  theme.colors.mint,
+  "#7BC4EA",
+  theme.colors.yellow,
+];
+
+function getGroupColor(name: string) {
+  const idx = name.charCodeAt(0) % GROUP_COLORS.length;
+  return GROUP_COLORS[idx];
+}
 
 export default function GroupDetailScreen() {
   const route = useRoute<GroupDetailRouteProp>();
@@ -31,20 +43,29 @@ export default function GroupDetailScreen() {
   const navigation = useNavigation<GroupDetailNavigationProp>();
   const { setCurrentGroup } = useGroup();
 
-  const fadeAnim = useRef(new Animated.Value(0)).current; // animation fade in
+  // Animations
+  const headerAnim = useRef(new Animated.Value(-20)).current;
+  const headerOpacity = useRef(new Animated.Value(0)).current;
+  const contentAnim = useRef(new Animated.Value(30)).current;
+  const contentOpacity = useRef(new Animated.Value(0)).current;
+  const modeBtnScale = useRef(new Animated.Value(1)).current;
+  const startBtnScale = useRef(new Animated.Value(1)).current;
+
+  const animateIn = () => {
+    Animated.parallel([
+      Animated.timing(headerOpacity, { toValue: 1, duration: 350, useNativeDriver: true }),
+      Animated.spring(headerAnim, { toValue: 0, tension: 70, friction: 10, useNativeDriver: true }),
+      Animated.timing(contentOpacity, { toValue: 1, duration: 400, delay: 120, useNativeDriver: true }),
+      Animated.spring(contentAnim, { toValue: 0, tension: 60, friction: 10, delay: 120, useNativeDriver: true }),
+    ]).start();
+  };
 
   const fetchGroup = async () => {
     try {
       if (groupId === "new") return;
       const res = await api.get(`/groups/${groupId}`);
       setGroup(res.data);
-      console.log("GROUP ", group);
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 500,
-        useNativeDriver: true,
-        easing: Easing.out(Easing.exp),
-      }).start();
+      animateIn();
     } catch (error) {
       console.error(error);
     }
@@ -60,54 +81,189 @@ export default function GroupDetailScreen() {
     fetchGroup();
   }, []);
 
-  const startGroup = () => {
-    setCurrentGroup(group);
-    navigation.replace("MainTabs");
+  const handleSetMode = async (mode: GroupMode) => {
+    Animated.sequence([
+      Animated.timing(modeBtnScale, { toValue: 0.96, duration: 80, useNativeDriver: true }),
+      Animated.spring(modeBtnScale, { toValue: 1, useNativeDriver: true }),
+    ]).start();
+    try {
+      await api.patch(`/groups/${groupId}/mode`, { mode });
+      setGroup((prev) => (prev ? { ...prev, mode } : prev));
+    } catch {
+      Alert.alert("Erreur", "Impossible de changer le mode.");
+    }
   };
+
+  const startGroup = () => {
+    Animated.sequence([
+      Animated.timing(startBtnScale, { toValue: 0.95, duration: 80, useNativeDriver: true }),
+      Animated.spring(startBtnScale, { toValue: 1, useNativeDriver: true }),
+    ]).start(() => {
+      setCurrentGroup(group);
+      navigation.replace("MainTabs");
+    });
+  };
+
+  if (!group) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Text style={styles.loadingText}>Chargement…</Text>
+      </View>
+    );
+  }
+
+  const accentColor = getGroupColor(group.name);
+  const initial = group.name[0].toUpperCase();
+  const memberCount = group.members?.length ?? 0;
 
   return (
     <View style={styles.container}>
-      {group ? (
-        <Animated.View style={{ opacity: fadeAnim, flex: 1 }}>
-          <Text style={styles.title}>{group.name}</Text>
-          <Text style={styles.subtitle}>Membres :</Text>
-
-          <FlatList
-            data={group.members}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item, index }) => (
-              <MemberItem
-                firstName={item.firstName} // ← ici
-                email={item?.email} // ← ici
-                index={index}
-              />
-            )}
-          />
-
-          <Text style={styles.infoText}>
-            Prêt à commencer à partager la charge mentale avec ce groupe ?
-          </Text>
-
-          <TouchableOpacity
-            style={styles.startButton}
-            activeOpacity={0.8}
-            onPress={startGroup}
-          >
-            <Text style={styles.startButtonText}>Commencer</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.addMemberButton}
-            onPress={() =>
-              navigation.navigate("AddMember", { groupId: groupId })
-            }
-          >
-            <Text style={styles.addMemberText}>Ajouter des membres</Text>
-          </TouchableOpacity>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* ── Hero header ── */}
+        <Animated.View
+          style={[
+            styles.hero,
+            { transform: [{ translateY: headerAnim }], opacity: headerOpacity },
+          ]}
+        >
+          <View style={[styles.groupAvatar, { backgroundColor: accentColor + "22", borderColor: accentColor }]}>
+            <Text style={[styles.groupAvatarText, { color: accentColor }]}>{initial}</Text>
+          </View>
+          <Text style={styles.groupName}>{group.name}</Text>
+          <View style={styles.metaRow}>
+            <View style={styles.chip}>
+              <Text style={styles.chipText}>
+                📅{" "}
+                {new Date(group.createdAt).toLocaleDateString("fr-FR", {
+                  month: "long",
+                  year: "numeric",
+                })}
+              </Text>
+            </View>
+            <View style={styles.chip}>
+              <Text style={styles.chipText}>
+                {memberCount} membre{memberCount !== 1 ? "s" : ""}
+              </Text>
+            </View>
+          </View>
         </Animated.View>
-      ) : (
-        <Text style={styles.loadingText}>Chargement...</Text>
-      )}
+
+        {/* ── Corps ── */}
+        <Animated.View
+          style={{
+            transform: [{ translateY: contentAnim }],
+            opacity: contentOpacity,
+          }}
+        >
+          {/* Section membres */}
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Membres</Text>
+              <TouchableOpacity
+                style={styles.addMemberBtn}
+                onPress={() => navigation.navigate("AddMember", { groupId })}
+              >
+                <Text style={styles.addMemberBtnText}>+ Ajouter</Text>
+              </TouchableOpacity>
+            </View>
+
+            {group.members && group.members.length > 0 ? (
+              group.members.map((item, index) => (
+                <MemberItem
+                  key={item.id}
+                  firstName={item.firstName}
+                  email={item.email}
+                  index={index}
+                  isAdmin={group.weeklyAdmin?.id === item.id}
+                />
+              ))
+            ) : (
+              <View style={styles.emptyMembers}>
+                <Text style={styles.emptyMembersText}>
+                  Aucun membre pour l'instant
+                </Text>
+              </View>
+            )}
+          </View>
+
+          {/* Section mode */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Mode du groupe</Text>
+
+            <Animated.View style={[styles.modeRow, { transform: [{ scale: modeBtnScale }] }]}>
+              <TouchableOpacity
+                style={[styles.modeBtn, group.mode !== "FUNNY" && styles.modeBtnActive]}
+                onPress={() => handleSetMode("FREE")}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.modeEmoji}>🕊️</Text>
+                <Text style={[styles.modeBtnLabel, group.mode !== "FUNNY" && styles.modeBtnLabelActive]}>
+                  Libre
+                </Text>
+                <Text style={styles.modeDesc}>Chacun s'attribue ses tâches</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.modeBtn, group.mode === "FUNNY" && styles.modeBtnActive]}
+                onPress={() => handleSetMode("FUNNY")}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.modeEmoji}>🎡</Text>
+                <Text style={[styles.modeBtnLabel, group.mode === "FUNNY" && styles.modeBtnLabelActive]}>
+                  Drôle
+                </Text>
+                <Text style={styles.modeDesc}>Un chef tiré au sort distribue</Text>
+              </TouchableOpacity>
+            </Animated.View>
+
+            {/* Admin badge */}
+            {group.mode === "FUNNY" && group.weeklyAdmin && (
+              <View style={styles.adminBadge}>
+                <Text style={styles.adminBadgeEmoji}>👑</Text>
+                <View>
+                  <Text style={styles.adminBadgeLabel}>Chef de la semaine</Text>
+                  <Text style={styles.adminBadgeName}>{group.weeklyAdmin.firstName}</Text>
+                </View>
+              </View>
+            )}
+
+            {/* Bouton roue */}
+            {group.mode === "FUNNY" && (
+              <TouchableOpacity
+                style={styles.spinButton}
+                activeOpacity={0.85}
+                onPress={() =>
+                  navigation.navigate("SpinWheel", {
+                    groupId,
+                    members: [
+                      { id: group.owner.id, firstName: group.owner.firstName, email: group.owner.email },
+                      ...(group.members ?? []),
+                    ],
+                  })
+                }
+              >
+                <Text style={styles.spinButtonText}>🎰 Tirer le chef de la semaine</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </Animated.View>
+
+        {/* Espace pour le footer fixe */}
+        <View style={{ height: 110 }} />
+      </ScrollView>
+
+      {/* ── Footer fixe ── */}
+      <View style={styles.footer}>
+        <Animated.View style={{ transform: [{ scale: startBtnScale }] }}>
+          <Pressable style={styles.startButton} onPress={startGroup}>
+            <Text style={styles.startButtonText}>Commencer →</Text>
+          </Pressable>
+        </Animated.View>
+      </View>
     </View>
   );
 }
@@ -116,78 +272,225 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.background,
-    padding: theme.spacing.lg,
   },
-  title: {
-    fontSize: theme.typography.size.xxl,
-    color: theme.colors.textPrimary,
-    fontFamily: theme.typography.fontFamily.bold,
-    marginBottom: theme.spacing.sm,
+  scroll: {
+    flex: 1,
   },
-  subtitle: {
-    fontSize: theme.typography.size.lg,
-    color: theme.colors.textSecondary,
-    fontFamily: theme.typography.fontFamily.medium,
+  scrollContent: {
+    paddingHorizontal: theme.spacing.lg,
+    paddingTop: theme.spacing.lg,
+  },
+
+  // Hero
+  hero: {
+    alignItems: "center",
+    marginBottom: theme.spacing.xl,
+  },
+  groupAvatar: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    borderWidth: 2,
+    alignItems: "center",
+    justifyContent: "center",
     marginBottom: theme.spacing.md,
   },
-  memberCard: {
-    backgroundColor: theme.colors.surface,
-    padding: theme.spacing.md,
-    borderRadius: theme.radius.md,
-    marginBottom: theme.spacing.sm,
-    shadowColor: theme.shadows.soft.shadowColor,
-    shadowOffset: theme.shadows.soft.shadowOffset,
-    shadowOpacity: theme.shadows.soft.shadowOpacity,
-    shadowRadius: theme.shadows.soft.shadowRadius,
-    elevation: theme.shadows.soft.elevation,
+  groupAvatarText: {
+    fontSize: 28,
+    fontFamily: theme.typography.fontFamily.bold,
   },
-  memberName: {
-    fontSize: theme.typography.size.md,
+  groupName: {
+    fontSize: theme.typography.size.xxl,
+    fontFamily: theme.typography.fontFamily.bold,
     color: theme.colors.textPrimary,
-    fontFamily: theme.typography.fontFamily.semiBold,
+    textAlign: "center",
+    marginBottom: theme.spacing.sm,
   },
-  memberEmail: {
-    fontSize: theme.typography.size.sm,
+  metaRow: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  chip: {
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.round,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+  },
+  chipText: {
+    fontSize: theme.typography.size.xs,
     color: theme.colors.textSecondary,
+    fontFamily: theme.typography.fontFamily.medium,
+  },
+
+  // Sections
+  section: {
+    marginBottom: theme.spacing.xl,
+  },
+  sectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: theme.spacing.md,
+  },
+  sectionTitle: {
+    fontSize: theme.typography.size.sm,
+    fontFamily: theme.typography.fontFamily.semiBold,
+    color: theme.colors.textSecondary,
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
+  },
+  addMemberBtn: {
+    backgroundColor: theme.colors.purple + "22",
+    borderWidth: 1,
+    borderColor: theme.colors.purple,
+    borderRadius: theme.radius.round,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+  },
+  addMemberBtnText: {
+    fontSize: theme.typography.size.xs,
+    fontFamily: theme.typography.fontFamily.semiBold,
+    color: theme.colors.purple,
+  },
+  emptyMembers: {
+    paddingVertical: theme.spacing.lg,
+    alignItems: "center",
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderStyle: "dashed",
+  },
+  emptyMembersText: {
+    color: theme.colors.textSecondary,
+    fontSize: theme.typography.size.sm,
     fontFamily: theme.typography.fontFamily.regular,
   },
-  startButton: {
-    backgroundColor: theme.colors.purple,
+
+  // Mode
+  modeRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginBottom: theme.spacing.md,
+  },
+  modeBtn: {
+    flex: 1,
+    paddingVertical: theme.spacing.md,
+    paddingHorizontal: theme.spacing.sm,
+    borderRadius: theme.radius.md,
+    borderWidth: 1.5,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surface,
+    alignItems: "center",
+  },
+  modeBtnActive: {
+    borderColor: theme.colors.purple,
+    backgroundColor: theme.colors.purple + "18",
+  },
+  modeEmoji: {
+    fontSize: 22,
+    marginBottom: 6,
+  },
+  modeBtnLabel: {
+    fontSize: theme.typography.size.md,
+    fontFamily: theme.typography.fontFamily.semiBold,
+    color: theme.colors.textSecondary,
+    marginBottom: 4,
+  },
+  modeBtnLabelActive: {
+    color: theme.colors.purple,
+  },
+  modeDesc: {
+    fontSize: 11,
+    color: theme.colors.textSecondary,
+    textAlign: "center",
+    fontFamily: theme.typography.fontFamily.regular,
+    lineHeight: 15,
+  },
+  adminBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    backgroundColor: "#FFD70014",
+    borderWidth: 1,
+    borderColor: "#FFD70055",
+    borderRadius: theme.radius.md,
+    padding: theme.spacing.md,
+    marginBottom: theme.spacing.sm,
+  },
+  adminBadgeEmoji: {
+    fontSize: 28,
+  },
+  adminBadgeLabel: {
+    fontSize: theme.typography.size.xs,
+    color: "#FFD700",
+    fontFamily: theme.typography.fontFamily.medium,
+    textTransform: "uppercase",
+    letterSpacing: 0.6,
+  },
+  adminBadgeName: {
+    fontSize: theme.typography.size.md,
+    color: theme.colors.textPrimary,
+    fontFamily: theme.typography.fontFamily.bold,
+    marginTop: 2,
+  },
+  spinButton: {
+    borderWidth: 1.5,
+    borderColor: theme.colors.pink,
+    backgroundColor: theme.colors.pink + "18",
     paddingVertical: theme.spacing.md,
     borderRadius: theme.radius.md,
     alignItems: "center",
-    marginTop: theme.spacing.lg,
-    shadowColor: theme.shadows.soft.shadowColor,
-    shadowOffset: theme.shadows.soft.shadowOffset,
-    shadowOpacity: theme.shadows.soft.shadowOpacity,
-    shadowRadius: theme.shadows.soft.shadowRadius,
-    elevation: theme.shadows.soft.elevation,
   },
-  startButtonText: {
-    color: theme.colors.textPrimary,
+  spinButtonText: {
+    color: theme.colors.pink,
     fontFamily: theme.typography.fontFamily.semiBold,
     fontSize: theme.typography.size.md,
   },
-  addMemberButton: {
-    marginTop: theme.spacing.sm,
+
+  // Footer
+  footer: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: theme.spacing.lg,
+    paddingBottom: Platform.OS === "ios" ? 36 : 24,
+    paddingTop: theme.spacing.md,
+    backgroundColor: theme.colors.background,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
+  },
+  startButton: {
+    backgroundColor: theme.colors.purple,
+    paddingVertical: 16,
+    borderRadius: theme.radius.round,
     alignItems: "center",
+    shadowColor: theme.colors.purple,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
+    elevation: 6,
   },
-  addMemberText: {
-    color: theme.colors.pink,
+  startButtonText: {
+    color: "#FFF",
+    fontFamily: theme.typography.fontFamily.bold,
     fontSize: theme.typography.size.md,
-    fontFamily: theme.typography.fontFamily.medium,
+    letterSpacing: 0.3,
   },
-  infoText: {
-    marginTop: theme.spacing.md,
-    color: theme.colors.textSecondary,
-    fontFamily: theme.typography.fontFamily.regular,
-    fontSize: theme.typography.size.md,
-    textAlign: "center",
+
+  // Loading
+  loadingContainer: {
+    flex: 1,
+    backgroundColor: theme.colors.background,
+    alignItems: "center",
+    justifyContent: "center",
   },
   loadingText: {
     color: theme.colors.textSecondary,
-    textAlign: "center",
-    marginTop: theme.spacing.xl,
     fontSize: theme.typography.size.lg,
+    fontFamily: theme.typography.fontFamily.regular,
   },
 });
