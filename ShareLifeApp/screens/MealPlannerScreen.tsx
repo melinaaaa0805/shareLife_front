@@ -484,7 +484,8 @@ export default function MealPlannerScreen() {
       });
       closeAddModal();
       fetchMeals();
-    } catch {
+    } catch (e) {
+      console.error("Erreur ajout repas:", e);
       Alert.alert("Erreur", "Impossible d'ajouter ce repas.");
     } finally {
       setSaving(false);
@@ -505,7 +506,8 @@ export default function MealPlannerScreen() {
       });
       closeAddModal();
       fetchMeals();
-    } catch {
+    } catch (e) {
+      console.error("Erreur ajout repas:", e);
       Alert.alert("Erreur", "Impossible d'ajouter ce repas.");
     } finally {
       setSaving(false);
@@ -529,7 +531,8 @@ export default function MealPlannerScreen() {
       });
       closeAddModal();
       fetchMeals();
-    } catch {
+    } catch (e) {
+      console.error("Erreur ajout repas:", e);
       Alert.alert("Erreur", "Impossible d'ajouter ce repas.");
     } finally {
       setSaving(false);
@@ -566,7 +569,8 @@ export default function MealPlannerScreen() {
       });
       setMeals((prev) => prev.map((m) => (m.id === editingMeal.id ? { ...m, ...res.data } : m)));
       setEditingMeal(null);
-    } catch {
+    } catch (e) {
+      console.error("Erreur modification repas:", e);
       Alert.alert("Erreur", "Impossible de sauvegarder les modifications.");
     } finally {
       setSaving(false);
@@ -593,12 +597,16 @@ export default function MealPlannerScreen() {
 
   const handleAddToShopping = async (meal: WeeklyMeal) => {
     try {
-      await api.post(`meals/${meal.id}/add-to-shopping`, {
+      console.log("[AddToShopping] meal:", meal.id, "group:", currentGroup!.id, "week:", weekNumber, "year:", year, "ingrédients:", meal.ingredients.length);
+      const res = await api.post(`meals/${meal.id}/add-to-shopping`, {
         groupId: currentGroup!.id,
         weekNumber,
+        year,
       });
+      console.log("[AddToShopping] réponse:", JSON.stringify(res.data));
       Alert.alert("Ajouté !", `Les ingrédients de "${meal.name}" ont été ajoutés à la liste de courses.`);
-    } catch {
+    } catch (e) {
+      console.error("[AddToShopping] erreur:", e);
       Alert.alert("Erreur", "Impossible d'ajouter les ingrédients.");
     }
   };
@@ -1356,7 +1364,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.lg,
     paddingBottom: Platform.OS === "ios" ? 40 : 24,
     paddingTop: 12,
-    maxHeight: "90%",
+    height: "80%",
   },
   modalHandle: {
     width: 36,

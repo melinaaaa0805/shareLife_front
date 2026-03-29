@@ -1,8 +1,14 @@
 import axios from "axios";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as SecureStore from "expo-secure-store";
 import { Alert } from "react-native";
-import { useAuth } from "../context/AuthContext";
+
+type LogoutHandler = () => void;
+let logoutHandler: LogoutHandler | null = null;
+
+export function setLogoutHandler(fn: LogoutHandler) {
+  logoutHandler = fn;
+}
+
 const api = axios.create({
   baseURL: "http://192.168.1.24:3000", // change selon ton backend
 });
@@ -21,11 +27,8 @@ api.interceptors.response.use(
   (response) => response,
   async (error) => {
     if (error.response?.status === 401) {
-      const { logout } = useAuth();
       console.log("JWT expiré ou invalide → déconnexion");
-
-      logout();
-      // Option simple (au début)
+      if (logoutHandler) logoutHandler();
       Alert.alert("Session expirée", "Veuillez vous reconnecter");
     }
 

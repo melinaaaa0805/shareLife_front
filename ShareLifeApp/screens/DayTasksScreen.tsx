@@ -1,26 +1,55 @@
-import React, { useState, useEffect, useRef } from "react";
+import { Ionicons } from "@expo/vector-icons";
 import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
+  useIsFocused,
+  useNavigation,
+  useRoute,
+} from "@react-navigation/native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import React, { useEffect, useRef, useState } from "react";
+import {
+  Alert,
   Animated,
+  Dimensions,
+  Image,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
-  Image,
-  Alert,
-  Modal,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
-import { useRoute, useNavigation, useIsFocused } from "@react-navigation/native";
-import { Ionicons } from "@expo/vector-icons";
+
+const SCREEN_WIDTH = Dimensions.get("window").width;
 import api from "../api/api";
 import { theme } from "../assets/style/theme";
-import { useGroup } from "../context/GroupContext";
 import { useAuth } from "../context/AuthContext";
+import { useGroup } from "../context/GroupContext";
 
-const DAYS_FR_FULL = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
-const MONTHS_FR = ["janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.", "août", "sept.", "oct.", "nov.", "déc."];
+const DAYS_FR_FULL = [
+  "Lundi",
+  "Mardi",
+  "Mercredi",
+  "Jeudi",
+  "Vendredi",
+  "Samedi",
+  "Dimanche",
+];
+const MONTHS_FR = [
+  "janv.",
+  "févr.",
+  "mars",
+  "avr.",
+  "mai",
+  "juin",
+  "juil.",
+  "août",
+  "sept.",
+  "oct.",
+  "nov.",
+  "déc.",
+];
 
 // ─── Helpers semaine ISO ──────────────────────────────────────────────────────
 function getISOWeek(d: Date): { week: number; year: number } {
@@ -29,7 +58,11 @@ function getISOWeek(d: Date): { week: number; year: number } {
   date.setDate(date.getDate() + 3 - ((date.getDay() + 6) % 7));
   const week1 = new Date(date.getFullYear(), 0, 4);
   const week =
-    Math.round(((date.getTime() - week1.getTime()) / 86400000 + ((week1.getDay() + 6) % 7)) / 7) + 1;
+    Math.round(
+      ((date.getTime() - week1.getTime()) / 86400000 +
+        ((week1.getDay() + 6) % 7)) /
+        7,
+    ) + 1;
   return { week, year: date.getFullYear() };
 }
 
@@ -41,7 +74,12 @@ type WeeklyMeal = {
   imageUrl?: string | null;
   ingredients: MealIngredient[];
   proposedBy?: { id: string; firstName: string } | null;
-  votes?: { id: string; user: { id: string; firstName: string }; dayOfWeek: number; meal: { id: string } }[];
+  votes?: {
+    id: string;
+    user: { id: string; firstName: string };
+    dayOfWeek: number;
+    meal: { id: string };
+  }[];
 };
 type MealVote = {
   id: string;
@@ -118,15 +156,34 @@ function TaskCard({
 
   useEffect(() => {
     Animated.parallel([
-      Animated.timing(opacityAnim, { toValue: 1, duration: 300, delay: index * 60, useNativeDriver: true }),
-      Animated.spring(slideAnim, { toValue: 0, tension: 80, friction: 8, delay: index * 60, useNativeDriver: true }),
+      Animated.timing(opacityAnim, {
+        toValue: 1,
+        duration: 300,
+        delay: index * 60,
+        useNativeDriver: true,
+      }),
+      Animated.spring(slideAnim, {
+        toValue: 0,
+        tension: 80,
+        friction: 8,
+        delay: index * 60,
+        useNativeDriver: true,
+      }),
     ]).start();
   }, []);
 
   const handleDone = () => {
     Animated.sequence([
-      Animated.spring(doneScale, { toValue: 0.92, useNativeDriver: true, speed: 60 }),
-      Animated.spring(doneScale, { toValue: 1, useNativeDriver: true, speed: 40 }),
+      Animated.spring(doneScale, {
+        toValue: 0.92,
+        useNativeDriver: true,
+        speed: 60,
+      }),
+      Animated.spring(doneScale, {
+        toValue: 1,
+        useNativeDriver: true,
+        speed: 40,
+      }),
     ]).start(() => onDone(item.id));
   };
 
@@ -146,15 +203,18 @@ function TaskCard({
           isDone
             ? { backgroundColor: theme.colors.success }
             : isMine
-            ? { backgroundColor: theme.colors.purple }
-            : { backgroundColor: theme.colors.border },
+              ? { backgroundColor: theme.colors.purple }
+              : { backgroundColor: theme.colors.border },
         ]}
       />
 
       <View style={styles.cardBody}>
         {/* Top row */}
         <View style={styles.cardTopRow}>
-          <Text style={[styles.taskTitle, isDone && styles.taskTitleDone]} numberOfLines={2}>
+          <Text
+            style={[styles.taskTitle, isDone && styles.taskTitleDone]}
+            numberOfLines={2}
+          >
             {item.title}
           </Text>
           <View style={styles.cardTopRight}>
@@ -168,39 +228,67 @@ function TaskCard({
               onPress={() => onDelete(item.id)}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
-              <Ionicons name="trash-outline" size={15} color={theme.colors.danger} />
+              <Ionicons
+                name="trash-outline"
+                size={15}
+                color={theme.colors.danger}
+              />
             </TouchableOpacity>
           </View>
         </View>
 
         {item.description ? (
-          <Text style={styles.taskDesc} numberOfLines={2}>{item.description}</Text>
+          <Text style={styles.taskDesc} numberOfLines={2}>
+            {item.description}
+          </Text>
         ) : null}
 
         {/* Meta chips */}
         <View style={styles.metaRow}>
           {item.duration != null && item.duration > 0 && (
             <View style={styles.metaChip}>
-              <Ionicons name="time-outline" size={11} color={theme.colors.textSecondary} />
+              <Ionicons
+                name="time-outline"
+                size={11}
+                color={theme.colors.textSecondary}
+              />
               <Text style={styles.metaChipText}>{item.duration} min</Text>
             </View>
           )}
           {item.weight != null && item.weight > 0 && (
             <View style={styles.metaChip}>
-              <Ionicons name="barbell-outline" size={11} color={theme.colors.textSecondary} />
-              <Text style={styles.metaChipText}>{item.weight} pt{item.weight > 1 ? 's' : ''}</Text>
+              <Ionicons
+                name="barbell-outline"
+                size={11}
+                color={theme.colors.textSecondary}
+              />
+              <Text style={styles.metaChipText}>
+                {item.weight} pt{item.weight > 1 ? "s" : ""}
+              </Text>
             </View>
           )}
           {isAssigned && assigneeName && !isMine && (
             <View style={[styles.metaChip, styles.assignedChip]}>
-              <Ionicons name="person-outline" size={11} color={theme.colors.purple} />
-              <Text style={[styles.metaChipText, { color: theme.colors.purple }]}>{assigneeName}</Text>
+              <Ionicons
+                name="person-outline"
+                size={11}
+                color={theme.colors.purple}
+              />
+              <Text
+                style={[styles.metaChipText, { color: theme.colors.purple }]}
+              >
+                {assigneeName}
+              </Text>
             </View>
           )}
           {isMine && !isDone && (
             <View style={[styles.metaChip, styles.mineChip]}>
               <Ionicons name="star" size={11} color={theme.colors.yellow} />
-              <Text style={[styles.metaChipText, { color: theme.colors.yellow }]}>Ma tâche</Text>
+              <Text
+                style={[styles.metaChipText, { color: theme.colors.yellow }]}
+              >
+                Ma tâche
+              </Text>
             </View>
           )}
         </View>
@@ -208,30 +296,50 @@ function TaskCard({
         {/* Funny mode lock hint */}
         {isFunnyMode && !isWeeklyAdmin && !isAssigned && (
           <View style={styles.lockHint}>
-            <Ionicons name="lock-closed-outline" size={12} color={theme.colors.textSecondary} />
-            <Text style={styles.lockHintText}>Seul l'admin de la semaine peut attribuer</Text>
+            <Ionicons
+              name="lock-closed-outline"
+              size={12}
+              color={theme.colors.textSecondary}
+            />
+            <Text style={styles.lockHintText}>
+              Seul l'admin de la semaine peut attribuer
+            </Text>
           </View>
         )}
 
         {/* Actions */}
         <View style={styles.actions}>
           {!isAssigned && !isFunnyMode && (
-            <TouchableOpacity style={styles.assignBtn} onPress={() => onAssign(item.id)} activeOpacity={0.8}>
+            <TouchableOpacity
+              style={styles.assignBtn}
+              onPress={() => onAssign(item.id)}
+              activeOpacity={0.8}
+            >
               <Ionicons name="person-add-outline" size={13} color="#FFF" />
               <Text style={styles.assignBtnText}>S'assigner</Text>
             </TouchableOpacity>
           )}
           {!isAssigned && isFunnyMode && isWeeklyAdmin && (
-            <TouchableOpacity style={[styles.assignBtn, styles.assignBtnFunny]} onPress={() => onAssignTo(item.id)} activeOpacity={0.8}>
+            <TouchableOpacity
+              style={[styles.assignBtn, styles.assignBtnFunny]}
+              onPress={() => onAssignTo(item.id)}
+              activeOpacity={0.8}
+            >
               <Ionicons name="crown-outline" size={13} color="#1A1A1A" />
-              <Text style={[styles.assignBtnText, { color: "#1A1A1A" }]}>Assigner à…</Text>
+              <Text style={[styles.assignBtnText, { color: "#1A1A1A" }]}>
+                Assigner à…
+              </Text>
             </TouchableOpacity>
           )}
 
           {isMine && !isDone && (
             <Animated.View style={{ transform: [{ scale: doneScale }] }}>
               <Pressable style={styles.doneBtn} onPress={handleDone}>
-                <Ionicons name="checkmark-circle-outline" size={13} color="#FFF" />
+                <Ionicons
+                  name="checkmark-circle-outline"
+                  size={13}
+                  color="#FFF"
+                />
                 <Text style={styles.doneBtnText}>Marquer comme fait</Text>
               </Pressable>
             </Animated.View>
@@ -239,7 +347,11 @@ function TaskCard({
 
           {isDone && isMine && (
             <View style={styles.doneConfirm}>
-              <Ionicons name="checkmark-circle" size={14} color={theme.colors.success} />
+              <Ionicons
+                name="checkmark-circle"
+                size={14}
+                color={theme.colors.success}
+              />
               <Text style={styles.doneConfirmText}>Terminé</Text>
             </View>
           )}
@@ -253,8 +365,11 @@ export default function DayTasksScreen() {
   const route = useRoute<any>();
   const navigation = useNavigation();
   const isFocused = useIsFocused();
-  const { date } = route.params as { date: string; dayIndex: number };
+  const { date: initialDate } = route.params as { date: string; dayIndex: number };
+  const [activeDate, setActiveDate] = useState(initialDate);
+  const slideAnim = useRef(new Animated.Value(0)).current;
 
+  const insets = useSafeAreaInsets();
   const { currentGroup } = useGroup();
   const { user } = useAuth();
   const userId = user?.id;
@@ -262,12 +377,14 @@ export default function DayTasksScreen() {
   const [dayTasks, setDayTasks] = useState<TaskItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [members, setMembers] = useState<Member[]>([]);
-  const [assignModalTaskId, setAssignModalTaskId] = useState<string | null>(null);
+  const [assignModalTaskId, setAssignModalTaskId] = useState<string | null>(
+    null,
+  );
 
   // ── Repas ────────────────────────────────────────────────────────────────
-  const { week: weekNumber, year } = getISOWeek(parseDateStr(date));
+  const { week: weekNumber, year } = getISOWeek(parseDateStr(activeDate));
   // dayIndex 0=lundi … 6=dimanche à partir de parseDateStr
-  const dayOfWeek = (parseDateStr(date).getDay() + 6) % 7;
+  const dayOfWeek = (parseDateStr(activeDate).getDay() + 6) % 7;
   const [weekMeals, setWeekMeals] = useState<WeeklyMeal[]>([]);
   const [dayVotes, setDayVotes] = useState<MealVote[]>([]);
   const [votedMealId, setVotedMealId] = useState<string | null>(null);
@@ -281,30 +398,42 @@ export default function DayTasksScreen() {
 
   useEffect(() => {
     Animated.stagger(100, [
-      Animated.timing(headerAnim, { toValue: 1, duration: 350, useNativeDriver: true }),
-      Animated.timing(statsAnim, { toValue: 1, duration: 350, useNativeDriver: true }),
+      Animated.timing(headerAnim, {
+        toValue: 1,
+        duration: 350,
+        useNativeDriver: true,
+      }),
+      Animated.timing(statsAnim, {
+        toValue: 1,
+        duration: 350,
+        useNativeDriver: true,
+      }),
     ]).start();
   }, []);
 
   useEffect(() => {
-    if (isFocused) {
-      fetchDayTasks();
-      fetchMealsAndVotes();
-      if (isFunnyMode && isWeeklyAdmin && currentGroup?.id) {
-        api.get(`/group-member/${currentGroup.id}`)
-          .then(r => setMembers(r.data || []))
-          .catch(() => {});
-      }
+    if (!isFocused) return;
+    fetchDayTasks();
+    fetchMealsAndVotes();
+    if (isFunnyMode && isWeeklyAdmin && currentGroup?.id) {
+      api
+        .get(`/group-member/${currentGroup.id}`)
+        .then((r) => setMembers(r.data || []))
+        .catch(() => {});
     }
-  }, [isFocused]);
+  }, [isFocused, activeDate]);
 
   const fetchMealsAndVotes = async () => {
     if (!currentGroup) return;
     try {
       const [mealsRes, votesRes, myVoteRes] = await Promise.all([
         api.get(`meals/${currentGroup.id}/${year}/${weekNumber}`),
-        api.get(`meal-votes/${currentGroup.id}/${year}/${weekNumber}/${dayOfWeek}`),
-        api.get(`meal-votes/my/${currentGroup.id}/${year}/${weekNumber}/${dayOfWeek}`),
+        api.get(
+          `meal-votes/${currentGroup.id}/${year}/${weekNumber}/${dayOfWeek}`,
+        ),
+        api.get(
+          `meal-votes/my/${currentGroup.id}/${year}/${weekNumber}/${dayOfWeek}`,
+        ),
       ]);
       setWeekMeals(mealsRes.data);
       setDayVotes(votesRes.data);
@@ -318,7 +447,9 @@ export default function DayTasksScreen() {
     if (!currentGroup) return;
     // Si déjà voté pour ce repas → supprimer le vote (toggle)
     if (votedMealId === mealId) {
-      const myVote = dayVotes.find((v) => v.user?.id === userId && v.meal?.id === mealId);
+      const myVote = dayVotes.find(
+        (v) => v.user?.id === userId && v.meal?.id === mealId,
+      );
       if (myVote) {
         try {
           await api.delete(`meal-votes/${myVote.id}`);
@@ -355,7 +486,10 @@ export default function DayTasksScreen() {
         groupId: currentGroup.id,
         weekNumber,
       });
-      Alert.alert("Ajouté !", `Les ingrédients de "${meal.name}" ont été ajoutés à la liste de courses.`);
+      Alert.alert(
+        "Ajouté !",
+        `Les ingrédients de "${meal.name}" ont été ajoutés à la liste de courses.`,
+      );
     } catch {
       Alert.alert("Erreur", "Impossible d'ajouter les ingrédients.");
     }
@@ -364,7 +498,7 @@ export default function DayTasksScreen() {
   const fetchDayTasks = async () => {
     setLoading(true);
     try {
-      const res = await api.get(`tasks/${date}/${currentGroup?.id}`);
+      const res = await api.get(`tasks/${activeDate}/${currentGroup?.id}`);
       setDayTasks(res.data);
     } catch (e) {
       console.error("Erreur fetch tâches du jour", e);
@@ -375,12 +509,18 @@ export default function DayTasksScreen() {
 
   const assignTask = async (taskId: string) => {
     // Mise à jour optimiste immédiate pour fluidité UX
-    setDayTasks(prev =>
-      prev.map(t =>
+    setDayTasks((prev) =>
+      prev.map((t) =>
         t.id === taskId
-          ? { ...t, taskAssignment: { user: { id: userId!, firstName: user?.firstName }, status: "PENDING" } }
-          : t
-      )
+          ? {
+              ...t,
+              taskAssignment: {
+                user: { id: userId!, firstName: user?.firstName },
+                status: "PENDING",
+              },
+            }
+          : t,
+      ),
     );
     try {
       await api.post(`task-assignment/${taskId}`);
@@ -392,8 +532,12 @@ export default function DayTasksScreen() {
   };
 
   const toggleDone = async (taskId: string) => {
-    setDayTasks(prev =>
-      prev.map(t => (t.id === taskId ? { ...t, taskAssignment: { ...t.taskAssignment, status: "DONE" } } : t))
+    setDayTasks((prev) =>
+      prev.map((t) =>
+        t.id === taskId
+          ? { ...t, taskAssignment: { ...t.taskAssignment, status: "DONE" } }
+          : t,
+      ),
     );
     try {
       await api.patch(`task-assignment/${taskId}/done`);
@@ -405,15 +549,15 @@ export default function DayTasksScreen() {
 
   const deleteTask = (taskId: string) => {
     Alert.alert(
-      'Supprimer la tâche',
-      'Cette tâche sera définitivement supprimée.',
+      "Supprimer la tâche",
+      "Cette tâche sera définitivement supprimée.",
       [
-        { text: 'Annuler', style: 'cancel' },
+        { text: "Annuler", style: "cancel" },
         {
-          text: 'Supprimer',
-          style: 'destructive',
+          text: "Supprimer",
+          style: "destructive",
           onPress: async () => {
-            setDayTasks(prev => prev.filter(t => t.id !== taskId));
+            setDayTasks((prev) => prev.filter((t) => t.id !== taskId));
             try {
               await api.delete(`/tasks/${taskId}`);
             } catch {
@@ -427,13 +571,19 @@ export default function DayTasksScreen() {
 
   const assignTaskToMember = async (taskId: string, memberId: string) => {
     setAssignModalTaskId(null);
-    const member = members.find(m => m.id === memberId);
-    setDayTasks(prev =>
-      prev.map(t =>
+    const member = members.find((m) => m.id === memberId);
+    setDayTasks((prev) =>
+      prev.map((t) =>
         t.id === taskId
-          ? { ...t, taskAssignment: { user: { id: memberId, firstName: member?.firstName }, status: "PENDING" } }
-          : t
-      )
+          ? {
+              ...t,
+              taskAssignment: {
+                user: { id: memberId, firstName: member?.firstName },
+                status: "PENDING",
+              },
+            }
+          : t,
+      ),
     );
     try {
       await api.post(`task-assignment/${taskId}/assign-to/${memberId}`);
@@ -443,57 +593,123 @@ export default function DayTasksScreen() {
     }
   };
 
-  const { dayName, dateLabel } = formatDayHeader(date);
-  const todayFlag = isToday(date);
+  const goToDay = (offset: number) => {
+    const outX = offset > 0 ? -SCREEN_WIDTH : SCREEN_WIDTH;
+    const inX = offset > 0 ? SCREEN_WIDTH : -SCREEN_WIDTH;
+
+    Animated.timing(slideAnim, {
+      toValue: outX,
+      duration: 180,
+      useNativeDriver: true,
+    }).start(() => {
+      const d = parseDateStr(activeDate);
+      d.setDate(d.getDate() + offset);
+      const y = d.getFullYear();
+      const mo = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      setActiveDate(`${y}-${mo}-${day}`);
+      slideAnim.setValue(inX);
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 180,
+        useNativeDriver: true,
+      }).start();
+    });
+  };
+
+  const { dayName, dateLabel } = formatDayHeader(activeDate);
+  const todayFlag = isToday(activeDate);
   const totalTasks = dayTasks.length;
-  const doneTasks = dayTasks.filter(t => t.taskAssignment?.status === "DONE").length;
-  const myTasks = dayTasks.filter(t => t.taskAssignment?.user?.id === userId).length;
+  const doneTasks = dayTasks.filter(
+    (t) => t.taskAssignment?.status === "DONE",
+  ).length;
+  const myTasks = dayTasks.filter(
+    (t) => t.taskAssignment?.user?.id === userId,
+  ).length;
 
   return (
     <View style={styles.container}>
       {/* Header */}
-      <Animated.View style={[styles.header, { opacity: headerAnim }]}>
-        <View style={styles.headerLeft}>
-          <View style={styles.dayNameRow}>
-            <Text style={styles.dayName}>{dayName}</Text>
-            {todayFlag && (
-              <View style={styles.todayBadge}>
-                <Text style={styles.todayBadgeText}>Aujourd'hui</Text>
-              </View>
-            )}
-          </View>
-          <Text style={styles.dateLabel}>{dateLabel}</Text>
+      <Animated.View style={[styles.header, { opacity: headerAnim, paddingTop: insets.top + 8 }]}>
+        {/* Top row: back button + mode badge */}
+        <View style={styles.headerTopRow}>
+          <TouchableOpacity
+            style={styles.backBtn}
+            onPress={() => navigation.goBack()}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Ionicons name="arrow-back" size={20} color={theme.colors.textPrimary} />
+          </TouchableOpacity>
+          {isFunnyMode ? (
+            <View style={[styles.modeBadge, isWeeklyAdmin && styles.modeBadgeAdmin]}>
+              <Ionicons
+                name={isWeeklyAdmin ? "crown" : "lock-closed"}
+                size={12}
+                color={isWeeklyAdmin ? theme.colors.yellow : theme.colors.textSecondary}
+              />
+              <Text style={[styles.modeBadgeText, isWeeklyAdmin && styles.modeBadgeTextAdmin]}>
+                {isWeeklyAdmin ? "Admin" : "Mode Drôle"}
+              </Text>
+            </View>
+          ) : <View />}
         </View>
 
-        {isFunnyMode && (
-          <View style={[styles.modeBadge, isWeeklyAdmin && styles.modeBadgeAdmin]}>
-            <Ionicons
-              name={isWeeklyAdmin ? "crown" : "lock-closed"}
-              size={12}
-              color={isWeeklyAdmin ? theme.colors.yellow : theme.colors.textSecondary}
-            />
-            <Text style={[styles.modeBadgeText, isWeeklyAdmin && styles.modeBadgeTextAdmin]}>
-              {isWeeklyAdmin ? "Admin" : "Mode Drôle"}
-            </Text>
+        {/* Day navigation row */}
+        <View style={styles.dayNavRow}>
+          <TouchableOpacity
+            style={styles.dayNavBtn}
+            onPress={() => goToDay(-1)}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Ionicons name="chevron-back" size={24} color={theme.colors.purple} />
+          </TouchableOpacity>
+
+          <View style={styles.dayNavCenter}>
+            <View style={styles.dayNameRow}>
+              <Text style={styles.dayName}>{dayName}</Text>
+              {todayFlag && (
+                <View style={styles.todayBadge}>
+                  <Text style={styles.todayBadgeText}>Aujourd'hui</Text>
+                </View>
+              )}
+            </View>
+            <Text style={styles.dateLabel}>{dateLabel}</Text>
           </View>
-        )}
+
+          <TouchableOpacity
+            style={styles.dayNavBtn}
+            onPress={() => goToDay(1)}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Ionicons name="chevron-forward" size={24} color={theme.colors.purple} />
+          </TouchableOpacity>
+        </View>
       </Animated.View>
 
+      <Animated.View style={{ flex: 1, transform: [{ translateX: slideAnim }] }}>
       {/* Stats bar */}
       {totalTasks > 0 && (
         <Animated.View style={[styles.statsBar, { opacity: statsAnim }]}>
           <View style={styles.statItem}>
             <Text style={styles.statValue}>{totalTasks}</Text>
-            <Text style={styles.statLabel}>tâche{totalTasks > 1 ? "s" : ""}</Text>
+            <Text style={styles.statLabel}>
+              tâche{totalTasks > 1 ? "s" : ""}
+            </Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
-            <Text style={[styles.statValue, { color: theme.colors.success }]}>{doneTasks}</Text>
-            <Text style={styles.statLabel}>faite{doneTasks > 1 ? "s" : ""}</Text>
+            <Text style={[styles.statValue, { color: theme.colors.success }]}>
+              {doneTasks}
+            </Text>
+            <Text style={styles.statLabel}>
+              faite{doneTasks > 1 ? "s" : ""}
+            </Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
-            <Text style={[styles.statValue, { color: theme.colors.purple }]}>{myTasks}</Text>
+            <Text style={[styles.statValue, { color: theme.colors.purple }]}>
+              {myTasks}
+            </Text>
             <Text style={styles.statLabel}>à moi</Text>
           </View>
 
@@ -503,7 +719,10 @@ export default function DayTasksScreen() {
               <View
                 style={[
                   styles.progressFill,
-                  { width: `${totalTasks > 0 ? (doneTasks / totalTasks) * 100 : 0}%` as any },
+                  {
+                    width:
+                      `${totalTasks > 0 ? (doneTasks / totalTasks) * 100 : 0}%` as any,
+                  },
                 ]}
               />
             </View>
@@ -512,7 +731,10 @@ export default function DayTasksScreen() {
       )}
 
       {/* Task list + Meal section */}
-      <ScrollView contentContainerStyle={styles.listContent} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.listContent}
+        showsVerticalScrollIndicator={false}
+      >
         {dayTasks.map((item, index) => (
           <TaskCard
             key={item.id}
@@ -531,10 +753,16 @@ export default function DayTasksScreen() {
         {!loading && dayTasks.length === 0 && (
           <View style={styles.emptyState}>
             <View style={styles.emptyIconCircle}>
-              <Ionicons name="sunny-outline" size={32} color={theme.colors.purple} />
+              <Ionicons
+                name="sunny-outline"
+                size={32}
+                color={theme.colors.purple}
+              />
             </View>
             <Text style={styles.emptyTitle}>Journée libre !</Text>
-            <Text style={styles.emptySub}>Aucune tâche prévue pour cette journée.</Text>
+            <Text style={styles.emptySub}>
+              Aucune tâche prévue pour cette journée.
+            </Text>
           </View>
         )}
 
@@ -545,11 +773,19 @@ export default function DayTasksScreen() {
             onPress={() => setMealSectionOpen((v) => !v)}
           >
             <View style={styles.mealSectionTitleRow}>
-              <Ionicons name="restaurant-outline" size={16} color={theme.colors.mint} />
-              <Text style={styles.mealSectionTitle}>Repas du jour</Text>
+              <Ionicons
+                name="restaurant-outline"
+                size={16}
+                color={theme.colors.mint}
+              />
+              <Text style={styles.mealSectionTitle}>
+                Qu'est-ce qu'on mange ce soir ?
+              </Text>
               {dayVotes.length > 0 && (
                 <View style={styles.mealVotesBadge}>
-                  <Text style={styles.mealVotesBadgeText}>{dayVotes.length} vote{dayVotes.length > 1 ? "s" : ""}</Text>
+                  <Text style={styles.mealVotesBadgeText}>
+                    {dayVotes.length} vote{dayVotes.length > 1 ? "s" : ""}
+                  </Text>
                 </View>
               )}
             </View>
@@ -564,30 +800,50 @@ export default function DayTasksScreen() {
             <View style={styles.mealSectionBody}>
               {weekMeals.length === 0 ? (
                 <Text style={styles.noMealsText}>
-                  Aucun repas proposé cette semaine. Ajoutez-en depuis l'onglet Repas.
+                  Aucun repas proposé cette semaine. Ajoutez-en depuis l'onglet
+                  Repas.
                 </Text>
               ) : (
                 weekMeals.map((meal) => {
-                  const mealDayVotes = dayVotes.filter((v) => v.meal?.id === meal.id);
+                  const mealDayVotes = dayVotes.filter(
+                    (v) => v.meal?.id === meal.id,
+                  );
                   const isVoted = votedMealId === meal.id;
                   return (
                     <View
                       key={meal.id}
-                      style={[styles.mealVoteCard, isVoted && styles.mealVoteCardActive]}
+                      style={[
+                        styles.mealVoteCard,
+                        isVoted && styles.mealVoteCardActive,
+                      ]}
                     >
                       <View style={styles.mealVoteCardLeft}>
                         {meal.imageUrl ? (
-                          <Image source={{ uri: meal.imageUrl }} style={styles.mealVoteImage} />
+                          <Image
+                            source={{ uri: meal.imageUrl }}
+                            style={styles.mealVoteImage}
+                          />
                         ) : (
                           <View style={styles.mealVoteImagePlaceholder}>
-                            <Ionicons name="restaurant-outline" size={16} color={theme.colors.mint} />
+                            <Ionicons
+                              name="restaurant-outline"
+                              size={16}
+                              color={theme.colors.mint}
+                            />
                           </View>
                         )}
                         <View style={styles.mealVoteInfo}>
-                          <Text style={styles.mealVoteName} numberOfLines={1}>{meal.name}</Text>
+                          <Text style={styles.mealVoteName} numberOfLines={1}>
+                            {meal.name}
+                          </Text>
                           {mealDayVotes.length > 0 && (
-                            <Text style={styles.mealVoteVoters} numberOfLines={1}>
-                              {mealDayVotes.map((v) => v.user?.firstName).join(", ")}
+                            <Text
+                              style={styles.mealVoteVoters}
+                              numberOfLines={1}
+                            >
+                              {mealDayVotes
+                                .map((v) => v.user?.firstName)
+                                .join(", ")}
                             </Text>
                           )}
                         </View>
@@ -595,24 +851,35 @@ export default function DayTasksScreen() {
                       <View style={styles.mealVoteCardRight}>
                         {mealDayVotes.length > 0 && (
                           <View style={styles.mealVoteCount}>
-                            <Text style={styles.mealVoteCountText}>{mealDayVotes.length}</Text>
+                            <Text style={styles.mealVoteCountText}>
+                              {mealDayVotes.length}
+                            </Text>
                           </View>
                         )}
                         <TouchableOpacity
-                          style={[styles.voteBtn, isVoted && styles.voteBtnActive]}
+                          style={[
+                            styles.voteBtn,
+                            isVoted && styles.voteBtnActive,
+                          ]}
                           onPress={() => handleVoteMeal(meal.id)}
                         >
                           <Ionicons
                             name={isVoted ? "heart" : "heart-outline"}
                             size={14}
-                            color={isVoted ? "#FFF" : theme.colors.textSecondary}
+                            color={
+                              isVoted ? "#FFF" : theme.colors.textSecondary
+                            }
                           />
                         </TouchableOpacity>
                         <TouchableOpacity
                           style={styles.cartBtn}
                           onPress={() => handleAddIngredientsToShopping(meal)}
                         >
-                          <Ionicons name="cart-outline" size={14} color={theme.colors.mint} />
+                          <Ionicons
+                            name="cart-outline"
+                            size={14}
+                            color={theme.colors.mint}
+                          />
                         </TouchableOpacity>
                       </View>
                     </View>
@@ -623,6 +890,7 @@ export default function DayTasksScreen() {
           )}
         </View>
       </ScrollView>
+      </Animated.View>
 
       {/* ── Modal assignation membre (mode Drôle) ────────────────────────── */}
       <Modal
@@ -631,12 +899,19 @@ export default function DayTasksScreen() {
         animationType="fade"
         onRequestClose={() => setAssignModalTaskId(null)}
       >
-        <Pressable style={styles.modalOverlay} onPress={() => setAssignModalTaskId(null)}>
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() => setAssignModalTaskId(null)}
+        >
           <Pressable style={styles.modalSheet} onPress={() => {}}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Assigner à…</Text>
               <TouchableOpacity onPress={() => setAssignModalTaskId(null)}>
-                <Ionicons name="close" size={20} color={theme.colors.textSecondary} />
+                <Ionicons
+                  name="close"
+                  size={20}
+                  color={theme.colors.textSecondary}
+                />
               </TouchableOpacity>
             </View>
             {members.length === 0 ? (
@@ -647,7 +922,10 @@ export default function DayTasksScreen() {
                   key={member.id}
                   style={styles.memberRow}
                   activeOpacity={0.7}
-                  onPress={() => assignModalTaskId && assignTaskToMember(assignModalTaskId, member.id)}
+                  onPress={() =>
+                    assignModalTaskId &&
+                    assignTaskToMember(assignModalTaskId, member.id)
+                  }
                 >
                   <View style={styles.memberAvatar}>
                     <Text style={styles.memberAvatarText}>
@@ -656,9 +934,15 @@ export default function DayTasksScreen() {
                   </View>
                   <View style={styles.memberInfo}>
                     <Text style={styles.memberName}>{member.firstName}</Text>
-                    <Text style={styles.memberEmail} numberOfLines={1}>{member.email}</Text>
+                    <Text style={styles.memberEmail} numberOfLines={1}>
+                      {member.email}
+                    </Text>
                   </View>
-                  <Ionicons name="chevron-forward" size={16} color={theme.colors.textSecondary} />
+                  <Ionicons
+                    name="chevron-forward"
+                    size={16}
+                    color={theme.colors.textSecondary}
+                  />
                 </TouchableOpacity>
               ))
             )}
@@ -677,17 +961,54 @@ const styles = StyleSheet.create({
 
   // Header
   header: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    justifyContent: "space-between",
+    flexDirection: "column",
     paddingHorizontal: theme.spacing.lg,
     paddingTop: theme.spacing.md,
     paddingBottom: theme.spacing.sm,
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border,
+    gap: 10,
+  },
+  headerTopRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  backBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  dayNavRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  dayNavBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: theme.colors.purple + "15",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  dayNavCenter: {
+    flex: 1,
+    alignItems: "center",
+    gap: 2,
   },
   headerLeft: { flex: 1 },
-  dayNameRow: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 2 },
+  dayNameRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+  },
   dayName: {
     fontSize: theme.typography.size.xl,
     fontFamily: theme.typography.fontFamily.bold,
@@ -708,6 +1029,7 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.size.sm,
     fontFamily: theme.typography.fontFamily.regular,
     color: theme.colors.textSecondary,
+    textAlign: "center",
   },
   modeBadge: {
     flexDirection: "row",
@@ -913,6 +1235,9 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
     paddingHorizontal: 14,
     borderRadius: theme.radius.round,
+  },
+  assignBtnFunny: {
+    backgroundColor: theme.colors.yellow,
   },
   assignBtnText: {
     fontSize: 12,

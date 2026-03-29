@@ -12,8 +12,9 @@ import {
   Platform,
   ScrollView,
 } from "react-native";
-import { useIsFocused } from "@react-navigation/native";
+import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import api from "../api/api";
 import { useGroup } from "../context/GroupContext";
 import { useWeek } from "../context/WeekContext";
@@ -135,7 +136,6 @@ function ItemRow({
 // ─── Main screen ──────────────────────────────────────────────────────────────
 
 export default function ShoppingListScreen() {
-  const isFocused = useIsFocused();
   const { currentGroup } = useGroup();
   const groupId = currentGroup?.id;
   const { week: currentWeek, year, goToPrevWeek, goToNextWeek, goToToday, isCurrentWeek } = useWeek();
@@ -150,6 +150,9 @@ export default function ShoppingListScreen() {
   const [newQty, setNewQty] = useState("1");
   const [nameFocused, setNameFocused] = useState(false);
 
+  // Historique des articles habituels
+  const [history, setHistory] = useState<string[]>([]);
+
   // Animations
   const headerAnim = useRef(new Animated.Value(0)).current;
   const statsAnim = useRef(new Animated.Value(0)).current;
@@ -163,16 +166,39 @@ export default function ShoppingListScreen() {
     ]).start();
   }, []);
 
+  const historyKey = `@sharelife_history_${groupId}`;
+
   useEffect(() => {
-    if (isFocused && groupId) fetchList();
-  }, [isFocused, groupId, currentWeek, year]);
+    if (!groupId) return;
+    AsyncStorage.getItem(historyKey)
+      .then(v => { if (v) setHistory(JSON.parse(v)); })
+      .catch(() => {});
+  }, [groupId]);
+
+  const saveToHistory = async (name: string) => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    const updated = [trimmed, ...history.filter(h => h.toLowerCase() !== trimmed.toLowerCase())].slice(0, 30);
+    setHistory(updated);
+    AsyncStorage.setItem(historyKey, JSON.stringify(updated)).catch(() => {});
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      if (groupId) fetchList();
+    }, [groupId, currentWeek, year])
+  );
 
   const fetchList = async () => {
     setLoading(true);
     try {
       const res = await api.get(`/shopping-lists/${groupId}`);
       const lists: ShoppingList[] = res.data;
-      const current = lists.find(l => l.weekNumber === currentWeek && (l.year === undefined || l.year === year));
+      console.log("[ShoppingList] listes reçues:", JSON.stringify(lists.map(l => ({ id: l.id, week: l.weekNumber, year: l.year, items: l.items.length }))));
+      console.log("[ShoppingList] cherche semaine:", currentWeek, "année:", year);
+      const current = lists.find(l => l.weekNumber === currentWeek && l.year === year)
+        ?? lists.find(l => l.weekNumber === currentWeek);
+      console.log("[ShoppingList] liste trouvée:", current ? `id=${current.id}, year=${current.year}, ${current.items.length} items` : "aucune");
       if (current) {
         setListId(current.id);
         setItems(current.items.map(i => ({ ...i, _done: false, _key: makeKey() })));
@@ -213,20 +239,28 @@ export default function ShoppingListScreen() {
     [groupId, listId, currentWeek, year]
   );
 
-  const handleAdd = () => {
-    const name = newName.trim();
-    if (!name) return;
-    const qty = newQty.trim() || "1";
-    const newItem: ShoppingItem = { name, quantity: qty, _done: false, _key: makeKey() };
+  const addItem = (name: string, qty: string) => {
+    const newItem: ShoppingItem = { name, quantity: qty || "1", _done: false, _key: makeKey() };
     const updated = [...items, newItem];
     setItems(updated);
-    setNewName("");
-    setNewQty("1");
+    saveToHistory(name);
     syncToBackend(updated);
     Animated.sequence([
       Animated.spring(addBtnScale, { toValue: 0.9, useNativeDriver: true, speed: 60 }),
       Animated.spring(addBtnScale, { toValue: 1, useNativeDriver: true, speed: 40 }),
     ]).start();
+  };
+
+  const handleAdd = () => {
+    const name = newName.trim();
+    if (!name) return;
+    addItem(name, newQty.trim());
+    setNewName("");
+    setNewQty("1");
+  };
+
+  const handleAddFromSuggestion = (name: string) => {
+    addItem(name, "1");
   };
 
   const handleToggle = (key: string) => {
@@ -251,6 +285,13 @@ export default function ShoppingListScreen() {
   const totalCount = items.length;
   const progressPct = totalCount > 0 ? doneCount / totalCount : 0;
   const hasDone = doneCount > 0;
+
+  const suggestions = history
+    .filter(h =>
+      (newName.trim().length === 0 || h.toLowerCase().includes(newName.trim().toLowerCase())) &&
+      !items.some(i => i.name.toLowerCase() === h.toLowerCase())
+    )
+    .slice(0, 8);
 
   return (
     <KeyboardAvoidingView
@@ -355,50 +396,43 @@ export default function ShoppingListScreen() {
 
       {/* ── Input footer ── */}
       <Animated.View style={[styles.inputFooter, { transform: [{ translateY: inputSlide }] }]}>
-        {/* Qty quick-picks */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.qtyRow}
-          contentContainerStyle={styles.qtyRowContent}
-        >
-          {["1", "2", "3", "6", "12"].map(q => (
-            <TouchableOpacity
-              key={q}
-              style={[styles.qtyPill, newQty === q && styles.qtyPillActive]}
-              onPress={() => setNewQty(q)}
-            >
-              <Text style={[styles.qtyPillText, newQty === q && styles.qtyPillTextActive]}>
-                ×{q}
-              </Text>
-            </TouchableOpacity>
-          ))}
-          <View style={styles.qtyCustomWrap}>
-            <TextInput
-              style={styles.qtyCustomInput}
-              value={newQty}
-              onChangeText={setNewQty}
-              keyboardType="numeric"
-              placeholder="qté"
-              placeholderTextColor={theme.colors.textSecondary}
-              maxLength={4}
-            />
-          </View>
-        </ScrollView>
 
-        {/* Name input + add */}
+        {/* Suggestions d'articles habituels */}
+        {suggestions.length > 0 && (
+          <View style={styles.suggestionsSection}>
+            <View style={styles.suggestionsHeader}>
+              <Ionicons name="time-outline" size={13} color={theme.colors.textSecondary} />
+              <Text style={styles.suggestionsLabel}>Habituels</Text>
+            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.suggestionsRow}
+              keyboardShouldPersistTaps="always"
+            >
+              {suggestions.map(s => (
+                <TouchableOpacity
+                  key={s}
+                  style={styles.suggestionChip}
+                  onPress={() => handleAddFromSuggestion(s)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.suggestionChipText} numberOfLines={1}>{s}</Text>
+                  <Ionicons name="add" size={13} color={theme.colors.purple} />
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        )}
+
+        {/* Ligne principale : input + quantité + bouton */}
         <View style={styles.inputRow}>
           <View style={[styles.nameInputWrap, nameFocused && styles.nameInputFocused]}>
-            <Ionicons
-              name="add-circle-outline"
-              size={18}
-              color={nameFocused ? theme.colors.purple : theme.colors.textSecondary}
-            />
             <TextInput
               style={styles.nameInput}
               value={newName}
               onChangeText={setNewName}
-              placeholder="Nouvel article…"
+              placeholder="Ajouter un article…"
               placeholderTextColor={theme.colors.textSecondary}
               autoCorrect={false}
               returnKeyType="done"
@@ -406,6 +440,17 @@ export default function ShoppingListScreen() {
               onFocus={() => setNameFocused(true)}
               onBlur={() => setNameFocused(false)}
             />
+            {/* Quantité inline */}
+            <View style={styles.qtyInlineWrap}>
+              <TextInput
+                style={styles.qtyInlineInput}
+                value={newQty}
+                onChangeText={setNewQty}
+                keyboardType="numeric"
+                maxLength={4}
+                selectTextOnFocus
+              />
+            </View>
           </View>
 
           <Animated.View style={{ transform: [{ scale: addBtnScale }] }}>
@@ -424,6 +469,25 @@ export default function ShoppingListScreen() {
             </Pressable>
           </Animated.View>
         </View>
+
+        {/* Quantités rapides */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.qtyRow}
+          contentContainerStyle={styles.qtyRowContent}
+          keyboardShouldPersistTaps="always"
+        >
+          {["1", "2", "3", "4", "6", "10", "12"].map(q => (
+            <TouchableOpacity
+              key={q}
+              style={[styles.qtyPill, newQty === q && styles.qtyPillActive]}
+              onPress={() => setNewQty(q)}
+            >
+              <Text style={[styles.qtyPillText, newQty === q && styles.qtyPillTextActive]}>×{q}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
       </Animated.View>
     </KeyboardAvoidingView>
   );
@@ -711,49 +775,50 @@ const styles = StyleSheet.create({
     borderTopColor: theme.colors.border,
     paddingTop: theme.spacing.sm,
     paddingHorizontal: theme.spacing.md,
-    paddingBottom: Platform.OS === "ios" ? 30 : 16,
+    paddingBottom: Platform.OS === "ios" ? 32 : 16,
+    gap: 10,
   },
-  qtyRow: {
-    marginBottom: 10,
+
+  // Suggestions
+  suggestionsSection: {
+    gap: 6,
   },
-  qtyRowContent: {
-    gap: 8,
+  suggestionsHeader: {
+    flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 2,
+    gap: 4,
   },
-  qtyPill: {
-    paddingVertical: 5,
-    paddingHorizontal: 14,
-    borderRadius: theme.radius.round,
-    backgroundColor: theme.colors.background,
-    borderWidth: 1.5,
-    borderColor: theme.colors.border,
-  },
-  qtyPillActive: {
-    backgroundColor: theme.colors.purple,
-    borderColor: theme.colors.purple,
-  },
-  qtyPillText: {
-    fontSize: 12,
-    fontFamily: theme.typography.fontFamily.semiBold,
+  suggestionsLabel: {
+    fontSize: 11,
+    fontFamily: theme.typography.fontFamily.medium,
     color: theme.colors.textSecondary,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
   },
-  qtyPillTextActive: { color: "#FFF" },
-  qtyCustomWrap: {
-    borderWidth: 1.5,
-    borderColor: theme.colors.border,
+  suggestionsRow: {
+    gap: 8,
+    paddingVertical: 2,
+  },
+  suggestionChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: theme.colors.purple + "12",
+    borderWidth: 1,
+    borderColor: theme.colors.purple + "30",
     borderRadius: theme.radius.round,
     paddingHorizontal: 12,
-    paddingVertical: 4,
-    backgroundColor: theme.colors.background,
+    paddingVertical: 6,
+    maxWidth: 160,
   },
-  qtyCustomInput: {
-    fontSize: 12,
-    fontFamily: theme.typography.fontFamily.semiBold,
-    color: theme.colors.textPrimary,
-    width: 40,
-    textAlign: "center",
+  suggestionChipText: {
+    fontSize: 13,
+    fontFamily: theme.typography.fontFamily.medium,
+    color: theme.colors.purple,
+    flexShrink: 1,
   },
+
+  // Input row
   inputRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -763,12 +828,13 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
     backgroundColor: theme.colors.background,
     borderRadius: theme.radius.md,
     borderWidth: 1.5,
     borderColor: theme.colors.border,
-    paddingHorizontal: theme.spacing.md,
+    paddingLeft: theme.spacing.md,
+    paddingRight: 6,
+    overflow: "hidden",
   },
   nameInputFocused: {
     borderColor: theme.colors.purple,
@@ -785,6 +851,50 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.size.md,
     paddingVertical: 13,
   },
+  qtyInlineWrap: {
+    borderLeftWidth: 1,
+    borderLeftColor: theme.colors.border,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    minWidth: 42,
+    alignItems: "center",
+  },
+  qtyInlineInput: {
+    fontSize: 13,
+    fontFamily: theme.typography.fontFamily.bold,
+    color: theme.colors.purple,
+    textAlign: "center",
+    minWidth: 30,
+  },
+
+  // Qty pills
+  qtyRow: {
+    marginTop: -2,
+  },
+  qtyRowContent: {
+    gap: 7,
+    alignItems: "center",
+  },
+  qtyPill: {
+    paddingVertical: 4,
+    paddingHorizontal: 12,
+    borderRadius: theme.radius.round,
+    backgroundColor: theme.colors.background,
+    borderWidth: 1.5,
+    borderColor: theme.colors.border,
+  },
+  qtyPillActive: {
+    backgroundColor: theme.colors.purple,
+    borderColor: theme.colors.purple,
+  },
+  qtyPillText: {
+    fontSize: 12,
+    fontFamily: theme.typography.fontFamily.semiBold,
+    color: theme.colors.textSecondary,
+  },
+  qtyPillTextActive: { color: "#FFF" },
+
+  // Add button
   addBtn: {
     width: 50,
     height: 50,

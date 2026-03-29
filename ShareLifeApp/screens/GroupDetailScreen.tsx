@@ -7,7 +7,6 @@ import {
   Pressable,
   StyleSheet,
   Animated,
-  Easing,
   Alert,
   Modal,
   Platform,
@@ -206,7 +205,7 @@ export default function GroupDetailScreen() {
                     firstName={item.firstName}
                     email={item.email}
                     index={index}
-                    isAdmin={group.weeklyAdmin?.id === item.id}
+                    isAdmin={group.mode === "FUNNY" && group.weeklyAdmin?.id === item.id}
                   />
                   {group.mode === "SMART" && (
                     <View style={[
