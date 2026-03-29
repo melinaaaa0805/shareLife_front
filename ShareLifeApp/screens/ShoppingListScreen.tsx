@@ -16,6 +16,7 @@ import { useIsFocused } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import api from "../api/api";
 import { useGroup } from "../context/GroupContext";
+import { useWeek } from "../context/WeekContext";
 import { theme } from "../assets/style/theme";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -30,18 +31,11 @@ type ShoppingItem = {
 type ShoppingList = {
   id: string;
   weekNumber: number;
+  year?: number;
   items: { name: string; quantity: string }[];
 };
 
 // ─── Utils ────────────────────────────────────────────────────────────────────
-
-function getISOWeek(date: Date): number {
-  const d = new Date(date);
-  d.setHours(0, 0, 0, 0);
-  d.setDate(d.getDate() + 3 - ((d.getDay() + 6) % 7));
-  const week1 = new Date(d.getFullYear(), 0, 4);
-  return 1 + Math.round(((d.getTime() - week1.getTime()) / 86400000 - 3 + ((week1.getDay() + 6) % 7)) / 7);
-}
 
 function makeKey() {
   return Math.random().toString(36).slice(2);
@@ -144,8 +138,7 @@ export default function ShoppingListScreen() {
   const isFocused = useIsFocused();
   const { currentGroup } = useGroup();
   const groupId = currentGroup?.id;
-
-  const currentWeek = getISOWeek(new Date());
+  const { week: currentWeek, year, goToPrevWeek, goToNextWeek, goToToday, isCurrentWeek } = useWeek();
 
   const [listId, setListId] = useState<string | null>(null);
   const [items, setItems] = useState<ShoppingItem[]>([]);
@@ -172,14 +165,14 @@ export default function ShoppingListScreen() {
 
   useEffect(() => {
     if (isFocused && groupId) fetchList();
-  }, [isFocused, groupId]);
+  }, [isFocused, groupId, currentWeek, year]);
 
   const fetchList = async () => {
     setLoading(true);
     try {
       const res = await api.get(`/shopping-lists/${groupId}`);
       const lists: ShoppingList[] = res.data;
-      const current = lists.find(l => l.weekNumber === currentWeek);
+      const current = lists.find(l => l.weekNumber === currentWeek && (l.year === undefined || l.year === year));
       if (current) {
         setListId(current.id);
         setItems(current.items.map(i => ({ ...i, _done: false, _key: makeKey() })));
@@ -206,6 +199,7 @@ export default function ShoppingListScreen() {
         } else {
           const res = await api.post(`/shopping-lists/${groupId}`, {
             weekNumber: currentWeek,
+            year,
             items: payload,
           });
           setListId(res.data.id);
@@ -216,7 +210,7 @@ export default function ShoppingListScreen() {
         setSaving(false);
       }
     },
-    [groupId, listId, currentWeek]
+    [groupId, listId, currentWeek, year]
   );
 
   const handleAdd = () => {
@@ -268,9 +262,7 @@ export default function ShoppingListScreen() {
       <Animated.View style={[styles.header, { opacity: headerAnim }]}>
         <View style={styles.headerLeft}>
           <Text style={styles.title}>Liste de courses</Text>
-          <Text style={styles.subtitle}>
-            {currentGroup?.name ?? "Groupe"} · Semaine {currentWeek}
-          </Text>
+          <Text style={styles.subtitle}>{currentGroup?.name ?? "Groupe"}</Text>
         </View>
         {saving && (
           <View style={styles.savingBadge}>
@@ -278,6 +270,24 @@ export default function ShoppingListScreen() {
           </View>
         )}
       </Animated.View>
+
+      {/* ── Week nav ── */}
+      <View style={styles.weekNav}>
+        <TouchableOpacity style={styles.weekNavArrow} onPress={goToPrevWeek}>
+          <Ionicons name="chevron-back" size={18} color={theme.colors.purple} />
+        </TouchableOpacity>
+        <TouchableOpacity onPress={goToToday} activeOpacity={0.7} style={styles.weekNavCenter}>
+          <Text style={styles.weekNavLabel}>Semaine {currentWeek}{year !== new Date().getFullYear() ? ` · ${year}` : ""}</Text>
+          {!isCurrentWeek && (
+            <View style={styles.backTodayPill}>
+              <Text style={styles.backTodayText}>Aujourd'hui</Text>
+            </View>
+          )}
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.weekNavArrow} onPress={goToNextWeek}>
+          <Ionicons name="chevron-forward" size={18} color={theme.colors.purple} />
+        </TouchableOpacity>
+      </View>
 
       {/* ── Stats bar ── */}
       {!loading && (
@@ -460,6 +470,49 @@ const styles = StyleSheet.create({
   },
   savingText: {
     fontSize: 11,
+    fontFamily: theme.typography.fontFamily.medium,
+    color: theme.colors.purple,
+  },
+
+  // Week nav
+  weekNav: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+    backgroundColor: theme.colors.surface,
+  },
+  weekNavArrow: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: theme.colors.background,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  weekNavCenter: {
+    flex: 1,
+    alignItems: "center",
+    gap: 4,
+  },
+  weekNavLabel: {
+    fontSize: theme.typography.size.sm,
+    fontFamily: theme.typography.fontFamily.semiBold,
+    color: theme.colors.textPrimary,
+  },
+  backTodayPill: {
+    backgroundColor: theme.colors.purple + "22",
+    borderRadius: theme.radius.round,
+    paddingHorizontal: 10,
+    paddingVertical: 2,
+  },
+  backTodayText: {
+    fontSize: 10,
     fontFamily: theme.typography.fontFamily.medium,
     color: theme.colors.purple,
   },

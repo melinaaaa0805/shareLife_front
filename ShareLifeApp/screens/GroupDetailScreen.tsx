@@ -9,13 +9,15 @@ import {
   Animated,
   Easing,
   Alert,
+  Modal,
   Platform,
 } from "react-native";
 import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useFocusEffect } from "@react-navigation/native";
+import { Ionicons } from "@expo/vector-icons";
 import api from "../api/api";
-import { RootStackParamList, Group, GroupMode } from "../types/types";
+import { RootStackParamList, Group, GroupMode, GroupMember, MemberProfile } from "../types/types";
 import { useGroup } from "../context/GroupContext";
 import { theme } from "../assets/style/theme";
 import MemberItem from "../components/MemberItem";
@@ -50,6 +52,8 @@ export default function GroupDetailScreen() {
   const contentOpacity = useRef(new Animated.Value(0)).current;
   const modeBtnScale = useRef(new Animated.Value(1)).current;
   const startBtnScale = useRef(new Animated.Value(1)).current;
+
+  const [profileModalMember, setProfileModalMember] = useState<GroupMember | null>(null);
 
   const animateIn = () => {
     Animated.parallel([
@@ -91,6 +95,25 @@ export default function GroupDetailScreen() {
       setGroup((prev) => (prev ? { ...prev, mode } : prev));
     } catch {
       Alert.alert("Erreur", "Impossible de changer le mode.");
+    }
+  };
+
+  const handleSetProfile = async (member: GroupMember, profile: MemberProfile) => {
+    setProfileModalMember(null);
+    try {
+      await api.patch(`/groups/${groupId}/members/${member.id}/profile`, { profile });
+      setGroup((prev) =>
+        prev
+          ? {
+              ...prev,
+              members: prev.members?.map((m) =>
+                m.id === member.id ? { ...m, profile } : m
+              ),
+            }
+          : prev
+      );
+    } catch {
+      Alert.alert("Erreur", "Impossible de modifier le profil.");
     }
   };
 
@@ -173,13 +196,29 @@ export default function GroupDetailScreen() {
 
             {group.members && group.members.length > 0 ? (
               group.members.map((item, index) => (
-                <MemberItem
+                <TouchableOpacity
                   key={item.id}
-                  firstName={item.firstName}
-                  email={item.email}
-                  index={index}
-                  isAdmin={group.weeklyAdmin?.id === item.id}
-                />
+                  activeOpacity={group.mode === "SMART" ? 0.7 : 1}
+                  onPress={() => group.mode === "SMART" && setProfileModalMember(item)}
+                  style={styles.memberRowWrapper}
+                >
+                  <MemberItem
+                    firstName={item.firstName}
+                    email={item.email}
+                    index={index}
+                    isAdmin={group.weeklyAdmin?.id === item.id}
+                  />
+                  {group.mode === "SMART" && (
+                    <View style={[
+                      styles.profileBadge,
+                      item.profile === "CHILD" && styles.profileBadgeChild,
+                    ]}>
+                      <Text style={styles.profileBadgeText}>
+                        {item.profile === "CHILD" ? "👶 Enfant" : "🧑 Adulte"}
+                      </Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
               ))
             ) : (
               <View style={styles.emptyMembers}>
@@ -196,12 +235,12 @@ export default function GroupDetailScreen() {
 
             <Animated.View style={[styles.modeRow, { transform: [{ scale: modeBtnScale }] }]}>
               <TouchableOpacity
-                style={[styles.modeBtn, group.mode !== "FUNNY" && styles.modeBtnActive]}
+                style={[styles.modeBtn, group.mode === "FREE" && styles.modeBtnActive]}
                 onPress={() => handleSetMode("FREE")}
                 activeOpacity={0.8}
               >
                 <Text style={styles.modeEmoji}>🕊️</Text>
-                <Text style={[styles.modeBtnLabel, group.mode !== "FUNNY" && styles.modeBtnLabelActive]}>
+                <Text style={[styles.modeBtnLabel, group.mode === "FREE" && styles.modeBtnLabelActive]}>
                   Libre
                 </Text>
                 <Text style={styles.modeDesc}>Chacun s'attribue ses tâches</Text>
@@ -218,9 +257,21 @@ export default function GroupDetailScreen() {
                 </Text>
                 <Text style={styles.modeDesc}>Un chef tiré au sort distribue</Text>
               </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.modeBtn, group.mode === "SMART" && styles.modeBtnActiveSmart]}
+                onPress={() => handleSetMode("SMART")}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.modeEmoji}>🤖</Text>
+                <Text style={[styles.modeBtnLabel, group.mode === "SMART" && styles.modeBtnLabelSmart]}>
+                  Intelligent
+                </Text>
+                <Text style={styles.modeDesc}>Répartition auto équilibrée</Text>
+              </TouchableOpacity>
             </Animated.View>
 
-            {/* Admin badge */}
+            {/* Admin badge (FUNNY) */}
             {group.mode === "FUNNY" && group.weeklyAdmin && (
               <View style={styles.adminBadge}>
                 <Text style={styles.adminBadgeEmoji}>👑</Text>
@@ -231,7 +282,7 @@ export default function GroupDetailScreen() {
               </View>
             )}
 
-            {/* Bouton roue */}
+            {/* Bouton roue (FUNNY) */}
             {group.mode === "FUNNY" && (
               <TouchableOpacity
                 style={styles.spinButton}
@@ -241,13 +292,33 @@ export default function GroupDetailScreen() {
                     groupId,
                     members: [
                       { id: group.owner.id, firstName: group.owner.firstName, email: group.owner.email },
-                      ...(group.members ?? []),
+                      ...(group.members ?? []).filter(m => m.id !== group.owner.id),
                     ],
                   })
                 }
               >
                 <Text style={styles.spinButtonText}>🎰 Tirer le chef de la semaine</Text>
               </TouchableOpacity>
+            )}
+
+            {/* SMART mode info + action */}
+            {group.mode === "SMART" && (
+              <>
+                <View style={styles.smartInfoBox}>
+                  <Ionicons name="information-circle-outline" size={16} color={theme.colors.mint} />
+                  <Text style={styles.smartInfoText}>
+                    Appuyez sur un membre pour définir son profil (Adulte / Enfant), puis lancez la répartition intelligente.
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.smartAssignButton}
+                  activeOpacity={0.85}
+                  onPress={() => navigation.navigate("SmartAssign", { groupId })}
+                >
+                  <Ionicons name="flash" size={16} color="#0E0E0E" />
+                  <Text style={styles.smartAssignButtonText}>🤖 Lancer la répartition intelligente</Text>
+                </TouchableOpacity>
+              </>
             )}
           </View>
         </Animated.View>
@@ -264,6 +335,58 @@ export default function GroupDetailScreen() {
           </Pressable>
         </Animated.View>
       </View>
+
+      {/* ── Modal profil membre (mode SMART) ── */}
+      <Modal
+        visible={!!profileModalMember}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setProfileModalMember(null)}
+      >
+        <Pressable style={styles.modalOverlay} onPress={() => setProfileModalMember(null)}>
+          <Pressable style={styles.modalSheet} onPress={() => {}}>
+            <View style={styles.modalHandle} />
+            <Text style={styles.modalTitle}>
+              Profil de {profileModalMember?.firstName}
+            </Text>
+            <Text style={styles.modalSub}>
+              Choisissez si ce membre est adulte ou enfant pour la répartition intelligente.
+            </Text>
+            <TouchableOpacity
+              style={[
+                styles.profileOption,
+                profileModalMember?.profile !== "CHILD" && styles.profileOptionActive,
+              ]}
+              onPress={() => profileModalMember && handleSetProfile(profileModalMember, "ADULT")}
+            >
+              <Text style={styles.profileOptionEmoji}>🧑</Text>
+              <View style={styles.profileOptionInfo}>
+                <Text style={styles.profileOptionLabel}>Adulte</Text>
+                <Text style={styles.profileOptionDesc}>Peut faire toutes les tâches</Text>
+              </View>
+              {profileModalMember?.profile !== "CHILD" && (
+                <Ionicons name="checkmark-circle" size={20} color={theme.colors.purple} />
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.profileOption,
+                profileModalMember?.profile === "CHILD" && styles.profileOptionActiveChild,
+              ]}
+              onPress={() => profileModalMember && handleSetProfile(profileModalMember, "CHILD")}
+            >
+              <Text style={styles.profileOptionEmoji}>👶</Text>
+              <View style={styles.profileOptionInfo}>
+                <Text style={styles.profileOptionLabel}>Enfant</Text>
+                <Text style={styles.profileOptionDesc}>Tâches adaptées à son âge</Text>
+              </View>
+              {profileModalMember?.profile === "CHILD" && (
+                <Ionicons name="checkmark-circle" size={20} color={theme.colors.mint} />
+              )}
+            </TouchableOpacity>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -492,5 +615,133 @@ const styles = StyleSheet.create({
     color: theme.colors.textSecondary,
     fontSize: theme.typography.size.lg,
     fontFamily: theme.typography.fontFamily.regular,
+  },
+
+  // SMART mode
+  modeBtnActiveSmart: {
+    borderColor: theme.colors.mint,
+    backgroundColor: theme.colors.mint + "18",
+  },
+  modeBtnLabelSmart: { color: theme.colors.mint },
+  smartInfoBox: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8,
+    backgroundColor: theme.colors.mint + "12",
+    borderWidth: 1,
+    borderColor: theme.colors.mint + "40",
+    borderRadius: theme.radius.md,
+    padding: theme.spacing.md,
+    marginBottom: theme.spacing.sm,
+  },
+  smartInfoText: {
+    flex: 1,
+    fontSize: theme.typography.size.xs,
+    fontFamily: theme.typography.fontFamily.regular,
+    color: theme.colors.mint,
+    lineHeight: 18,
+  },
+  smartAssignButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: theme.colors.mint,
+    paddingVertical: theme.spacing.md,
+    borderRadius: theme.radius.md,
+  },
+  smartAssignButtonText: {
+    color: "#0E0E0E",
+    fontFamily: theme.typography.fontFamily.semiBold,
+    fontSize: theme.typography.size.md,
+  },
+
+  // Member profile badge
+  memberRowWrapper: { position: "relative" },
+  profileBadge: {
+    position: "absolute",
+    right: 0,
+    top: "50%",
+    transform: [{ translateY: -10 }],
+    backgroundColor: theme.colors.purple + "22",
+    borderRadius: theme.radius.round,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderWidth: 1,
+    borderColor: theme.colors.purple + "44",
+  },
+  profileBadgeChild: {
+    backgroundColor: theme.colors.mint + "22",
+    borderColor: theme.colors.mint + "44",
+  },
+  profileBadgeText: {
+    fontSize: 10,
+    fontFamily: theme.typography.fontFamily.semiBold,
+    color: theme.colors.textPrimary,
+  },
+
+  // Profile modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "flex-end",
+  },
+  modalSheet: {
+    backgroundColor: theme.colors.surface,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: theme.spacing.lg,
+    paddingBottom: Platform.OS === "ios" ? 40 : 24,
+    gap: 12,
+  },
+  modalHandle: {
+    width: 36,
+    height: 4,
+    backgroundColor: theme.colors.border,
+    borderRadius: 2,
+    alignSelf: "center",
+    marginBottom: 8,
+  },
+  modalTitle: {
+    fontSize: theme.typography.size.lg,
+    fontFamily: theme.typography.fontFamily.bold,
+    color: theme.colors.textPrimary,
+  },
+  modalSub: {
+    fontSize: theme.typography.size.sm,
+    fontFamily: theme.typography.fontFamily.regular,
+    color: theme.colors.textSecondary,
+    marginBottom: 4,
+  },
+  profileOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    padding: 14,
+    borderRadius: theme.radius.md,
+    borderWidth: 1.5,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.background,
+  },
+  profileOptionActive: {
+    borderColor: theme.colors.purple,
+    backgroundColor: theme.colors.purple + "12",
+  },
+  profileOptionActiveChild: {
+    borderColor: theme.colors.mint,
+    backgroundColor: theme.colors.mint + "12",
+  },
+  profileOptionEmoji: { fontSize: 26 },
+  profileOptionInfo: { flex: 1 },
+  profileOptionLabel: {
+    fontSize: theme.typography.size.md,
+    fontFamily: theme.typography.fontFamily.semiBold,
+    color: theme.colors.textPrimary,
+    marginBottom: 2,
+  },
+  profileOptionDesc: {
+    fontSize: 12,
+    fontFamily: theme.typography.fontFamily.regular,
+    color: theme.colors.textSecondary,
   },
 });

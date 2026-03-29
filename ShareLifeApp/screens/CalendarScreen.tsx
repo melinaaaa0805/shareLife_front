@@ -17,6 +17,7 @@ import { Ionicons } from "@expo/vector-icons";
 import api from "../api/api";
 import { theme } from "../assets/style/theme";
 import { useGroup } from "../context/GroupContext";
+import { useWeek } from "../context/WeekContext";
 import { RootStackParamList } from "../types/types";
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -48,9 +49,8 @@ export default function CalendarScreen() {
   const isFocused = useIsFocused();
   const { currentGroup } = useGroup();
   const groupId = currentGroup?.id;
+  const { week, year, goToPrevWeek, goToNextWeek, goToToday, isCurrentWeek } = useWeek();
 
-  const [week, setWeek] = useState(getISOWeek(today));
-  const [year, setYear] = useState(today.getFullYear());
   const [tasks, setTasks] = useState<Task[]>([]);
   const [modalVisible, setModalVisible] = useState(false);
 
@@ -81,22 +81,7 @@ export default function CalendarScreen() {
     }
   };
 
-  const changeWeek = (direction: 1 | -1) => {
-    let newWeek = week + direction;
-    let newYear = year;
-    if (newWeek < 1) { newWeek = 52; newYear = year - 1; }
-    else if (newWeek > 52) { newWeek = 1; newYear = year + 1; }
-    setWeek(newWeek);
-    setYear(newYear);
-  };
-
-  const goToToday = () => {
-    setWeek(getISOWeek(today));
-    setYear(today.getFullYear());
-  };
-
   const weekDates = getWeekDatesFromISO(year, week);
-  const isCurrentWeek = week === getISOWeek(today) && year === today.getFullYear();
 
   const openModal = () => {
     setModalVisible(true);
@@ -195,7 +180,7 @@ export default function CalendarScreen() {
     <View style={styles.container}>
       {/* Week header */}
       <Animated.View style={[styles.weekHeader, { opacity: headerAnim }]}>
-        <TouchableOpacity style={styles.arrowBtn} onPress={() => changeWeek(-1)}>
+        <TouchableOpacity style={styles.arrowBtn} onPress={goToPrevWeek}>
           <Ionicons name="chevron-back" size={20} color={theme.colors.purple} />
         </TouchableOpacity>
 
@@ -209,7 +194,7 @@ export default function CalendarScreen() {
           )}
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.arrowBtn} onPress={() => changeWeek(1)}>
+        <TouchableOpacity style={styles.arrowBtn} onPress={goToNextWeek}>
           <Ionicons name="chevron-forward" size={20} color={theme.colors.purple} />
         </TouchableOpacity>
       </Animated.View>
@@ -321,13 +306,6 @@ function getWeekDatesFromISO(year: number, week: number): string[] {
   });
 }
 
-function getISOWeek(date: Date) {
-  const tmp = new Date(date);
-  tmp.setHours(0, 0, 0, 0);
-  tmp.setDate(tmp.getDate() + 3 - ((tmp.getDay() + 6) % 7));
-  const week1 = new Date(tmp.getFullYear(), 0, 4);
-  return 1 + Math.round(((tmp.getTime() - week1.getTime()) / 86400000 - 3 + ((week1.getDay() + 6) % 7)) / 7);
-}
 
 function formatShortDate(dateString: string) {
   return parseDateStr(dateString).toLocaleDateString("fr-FR", { day: "numeric", month: "short" });

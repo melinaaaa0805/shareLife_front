@@ -1,8 +1,7 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import {
   View,
   Text,
-  FlatList,
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
@@ -15,6 +14,7 @@ import {
   ScrollView,
   Modal,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useNavigation } from "@react-navigation/native";
 import { RootStackParamList } from "../types/types";
@@ -40,6 +40,132 @@ const AVATAR_PALETTE = [
 function getDefaultColor(name: string) {
   return AVATAR_PALETTE[name.charCodeAt(0) % AVATAR_PALETTE.length];
 }
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+type Invitation = {
+  id: string;
+  group: { id: string; name: string };
+  invitedBy: { id: string; firstName: string; email: string };
+  createdAt: string;
+};
+
+// ─── Invitation card ──────────────────────────────────────────────────────────
+
+function InvitationCard({
+  invitation,
+  index,
+  onAccept,
+  onDecline,
+}: {
+  invitation: Invitation;
+  index: number;
+  onAccept: (id: string) => void;
+  onDecline: (id: string) => void;
+}) {
+  const slideAnim = useRef(new Animated.Value(20)).current;
+  const opacityAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(opacityAnim, { toValue: 1, duration: 300, delay: index * 60, useNativeDriver: true }),
+      Animated.spring(slideAnim, { toValue: 0, useNativeDriver: true, tension: 80, friction: 9, delay: index * 60 }),
+    ]).start();
+  }, []);
+
+  const accent = AVATAR_PALETTE[invitation.group.name.charCodeAt(0) % AVATAR_PALETTE.length];
+
+  return (
+    <Animated.View style={[invStyles.card, { opacity: opacityAnim, transform: [{ translateY: slideAnim }] }]}>
+      <View style={[invStyles.cardAccent, { backgroundColor: accent }]} />
+      <View style={invStyles.cardBody}>
+        <View style={invStyles.cardTop}>
+          <View style={[invStyles.groupDot, { backgroundColor: accent + "30", borderColor: accent }]}>
+            <Text style={[invStyles.groupDotText, { color: accent }]}>
+              {invitation.group.name[0].toUpperCase()}
+            </Text>
+          </View>
+          <View style={invStyles.cardInfo}>
+            <Text style={invStyles.groupName}>{invitation.group.name}</Text>
+            <Text style={invStyles.invitedBy}>
+              Invité par {invitation.invitedBy.firstName || invitation.invitedBy.email}
+            </Text>
+          </View>
+        </View>
+        <View style={invStyles.actions}>
+          <TouchableOpacity
+            style={invStyles.declineBtn}
+            onPress={() => onDecline(invitation.id)}
+            activeOpacity={0.75}
+          >
+            <Ionicons name="close" size={14} color="#F44336" />
+            <Text style={invStyles.declineText}>Refuser</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={invStyles.acceptBtn}
+            onPress={() => onAccept(invitation.id)}
+            activeOpacity={0.75}
+          >
+            <Ionicons name="checkmark" size={14} color="#FFF" />
+            <Text style={invStyles.acceptText}>Rejoindre</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Animated.View>
+  );
+}
+
+const invStyles = StyleSheet.create({
+  card: {
+    flexDirection: "row",
+    backgroundColor: "#1F1F1F",
+    borderRadius: 14,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: "#2A2A2A",
+    overflow: "hidden",
+  },
+  cardAccent: { width: 4 },
+  cardBody: { flex: 1, padding: 14 },
+  cardTop: { flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 12 },
+  groupDot: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    borderWidth: 1.5,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  groupDotText: { fontSize: 16, fontFamily: "Inter-Bold" },
+  cardInfo: { flex: 1 },
+  groupName: { fontSize: 15, fontFamily: "Inter-SemiBold", color: "#F5F5F5" },
+  invitedBy: { fontSize: 12, fontFamily: "Inter-Regular", color: "#B5B5B5", marginTop: 2 },
+  actions: { flexDirection: "row", gap: 8 },
+  declineBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 5,
+    paddingVertical: 9,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: "#F44336" + "50",
+    backgroundColor: "#F44336" + "12",
+  },
+  declineText: { fontSize: 13, fontFamily: "Inter-SemiBold", color: "#F44336" },
+  acceptBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 5,
+    paddingVertical: 9,
+    borderRadius: 10,
+    backgroundColor: "#9B7BEA",
+  },
+  acceptText: { fontSize: 13, fontFamily: "Inter-SemiBold", color: "#FFF" },
+});
 
 // ─── Composant carte groupe ────────────────────────────────────────────────────
 function GroupCard({
@@ -114,6 +240,7 @@ export default function HomeScreen() {
   const [groups, setGroups] = useState<Group[]>([]);
   const [loadingGroups, setLoadingGroups] = useState(true);
   const [sheetVisible, setSheetVisible] = useState(false);
+  const [invitations, setInvitations] = useState<Invitation[]>([]);
 
   // Edit form state
   const [firstName, setFirstName] = useState(user?.firstName ?? "");
@@ -163,23 +290,47 @@ export default function HomeScreen() {
     outputRange: [0, 0.6],
   });
 
-  // Fetch groups
-  const fetchGroups = async () => {
+  // Fetch groups + invitations
+  const fetchData = useCallback(async () => {
     setLoadingGroups(true);
     try {
-      const res = await api.get("/groups/me");
-      setGroups(res.data);
+      const [groupsRes, invRes] = await Promise.all([
+        api.get("/groups/me"),
+        api.get("/group-invitations/mine"),
+      ]);
+      setGroups(groupsRes.data);
+      setInvitations(invRes.data || []);
     } catch {
-      Alert.alert("Erreur", "Impossible de charger les groupes");
+      Alert.alert("Erreur", "Impossible de charger les données");
     } finally {
       setLoadingGroups(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    const unsubscribe = navigation.addListener("focus", fetchGroups);
+    const unsubscribe = navigation.addListener("focus", fetchData);
     return unsubscribe;
   }, [navigation]);
+
+  const handleAcceptInvitation = async (id: string) => {
+    setInvitations((prev) => prev.filter((i) => i.id !== id));
+    try {
+      await api.patch(`/group-invitations/${id}/accept`);
+      fetchData(); // rafraîchit les groupes
+    } catch (err: any) {
+      fetchData();
+      Alert.alert("Erreur", err.response?.data?.message ?? "Impossible d'accepter l'invitation");
+    }
+  };
+
+  const handleDeclineInvitation = async (id: string) => {
+    setInvitations((prev) => prev.filter((i) => i.id !== id));
+    try {
+      await api.patch(`/group-invitations/${id}/decline`);
+    } catch {
+      fetchData();
+    }
+  };
 
   // Save profile
   const handleSave = async () => {
@@ -255,6 +406,27 @@ export default function HomeScreen() {
             <Text style={styles.logoutIcon}>⏻</Text>
           </TouchableOpacity>
         </View>
+
+        {/* ── Section invitations ── */}
+        {invitations.length > 0 && (
+          <View style={styles.invitationsSection}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Invitations</Text>
+              <View style={styles.invBadge}>
+                <Text style={styles.invBadgeText}>{invitations.length}</Text>
+              </View>
+            </View>
+            {invitations.map((inv, i) => (
+              <InvitationCard
+                key={inv.id}
+                invitation={inv}
+                index={i}
+                onAccept={handleAcceptInvitation}
+                onDecline={handleDeclineInvitation}
+              />
+            ))}
+          </View>
+        )}
 
         {/* ── Section groupes ── */}
         <View style={styles.sectionHeader}>
@@ -509,6 +681,22 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   logoutIcon: { fontSize: 16 },
+
+  // Invitations
+  invitationsSection: {
+    marginBottom: 24,
+  },
+  invBadge: {
+    backgroundColor: "#9B7BEA" + "33",
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  invBadgeText: {
+    color: "#9B7BEA",
+    fontSize: 11,
+    fontFamily: "Inter-Bold",
+  },
 
   // Section
   sectionHeader: {
