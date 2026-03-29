@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import * as SecureStore from "expo-secure-store";
-import api from "../api/api";
+import api, { setLogoutHandler } from "../api/api";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export type AuthUser = {
@@ -70,6 +70,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     await AsyncStorage.removeItem("email");
     setUser(null);
   };
+
+  useEffect(() => {
+    setLogoutHandler(logout);
+  }, []);
 
   const updateUser = async (payload: UpdateProfilePayload) => {
     const res = await api.patch("/users/me", payload);

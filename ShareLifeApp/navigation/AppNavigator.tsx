@@ -1,42 +1,49 @@
-import React from "react";
-import { TouchableOpacity, Text, View, StyleSheet, Platform, StatusBar } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import {
   NavigationContainer,
-  useNavigation,
   NavigationProp,
+  useNavigation,
 } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import { ActivityIndicator } from "react-native";
-import { theme, navigationTheme } from "../assets/style/theme";
-import { Ionicons } from "@expo/vector-icons";
+import React from "react";
+import {
+  ActivityIndicator,
+  Platform,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { navigationTheme, theme } from "../assets/style/theme";
 
 import { useAuth } from "../context/AuthContext";
 import { useGroup } from "../context/GroupContext";
 
-import HomeScreen from "../screens/HomeScreen";
-import LoginScreen from "../screens/LoginScreen";
-import RegisterScreen from "../screens/RegisterScreen";
-import GroupsScreen from "../screens/GroupsScreen";
-import GroupDetailScreen from "../screens/GroupDetailScreen";
+import AddMemberScreen from "../screens/AddMemberScreen";
+import AddTaskScreen from "../screens/AddTaskScreen";
+import CalendarScreen from "../screens/CalendarScreen";
 import CreateGroupScreen from "../screens/CreateGroupScreen";
+import DayTasksScreen from "../screens/DayTasksScreen";
+import ForgotPasswordScreen from "../screens/ForgotPasswordScreen";
 import GroupDashboardScreen from "../screens/GroupDashboardScreen";
+import GroupDetailScreen from "../screens/GroupDetailScreen";
+import GroupMembersScreen from "../screens/GroupMemberScreen";
+import GroupsScreen from "../screens/GroupsScreen";
+import HomeScreen from "../screens/HomeScreen";
+import ImportTaskScreen from "../screens/ImportTaskScreen";
+import LoginScreen from "../screens/LoginScreen";
+import MealPlannerScreen from "../screens/MealPlannerScreen";
+import RegisterScreen from "../screens/RegisterScreen";
+import SettingsScreen from "../screens/SettingsScreen";
+import ShoppingListScreen from "../screens/ShoppingListScreen";
+import SmartAssignScreen from "../screens/SmartAssignScreen";
+import SpinWheelScreen from "../screens/SpinWheelScreen";
 import TasksScreen from "../screens/TasksScreens";
 import UnassignedTasksScreen from "../screens/UnassignedScreen";
-import AddMemberScreen from "../screens/AddMemberScreen";
-import GroupMembersScreen from "../screens/GroupMemberScreen";
-import CalendarScreen from "../screens/CalendarScreen";
-import ShoppingListScreen from "../screens/ShoppingListScreen";
-import SettingsScreen from "../screens/SettingsScreen";
-import AddTaskScreen from "../screens/AddTaskScreen";
-import DayTasksScreen from "../screens/DayTasksScreen";
-import { RootStackParamList } from "../types/types";
-import ImportTaskScreen from "../screens/ImportTaskScreen";
-import SpinWheelScreen from "../screens/SpinWheelScreen";
-import ForgotPasswordScreen from "../screens/ForgotPasswordScreen";
-import MealPlannerScreen from "../screens/MealPlannerScreen";
 import WeekTemplateScreen from "../screens/WeekTemplateScreen";
-import SmartAssignScreen from "../screens/SmartAssignScreen";
+import { RootStackParamList } from "../types/types";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator();
@@ -51,7 +58,11 @@ function BackButton() {
       style={navStyles.backBtn}
       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
     >
-      <Ionicons name="chevron-back" size={20} color={theme.colors.textPrimary} />
+      <Ionicons
+        name="chevron-back"
+        size={20}
+        color={theme.colors.textPrimary}
+      />
     </TouchableOpacity>
   );
 }
@@ -89,7 +100,6 @@ function GroupTabsHeader() {
         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
       >
         <Ionicons name="chevron-back" size={18} color={theme.colors.purple} />
-        <Text style={navStyles.groupHeaderBackText}>Groupes</Text>
       </TouchableOpacity>
 
       <Text style={navStyles.groupHeaderName} numberOfLines={1}>
@@ -105,7 +115,11 @@ function GroupTabsHeader() {
         }
         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
       >
-        <Ionicons name="settings-outline" size={20} color={theme.colors.textSecondary} />
+        <Ionicons
+          name="settings-outline"
+          size={20}
+          color={theme.colors.textSecondary}
+        />
       </TouchableOpacity>
     </View>
   );
@@ -146,10 +160,26 @@ function MainTabs() {
           },
         })}
       >
-        <Tab.Screen name="Calendar" component={CalendarScreen} options={{ tabBarLabel: "Calendrier" }} />
-        <Tab.Screen name="Dashboard" component={GroupDashboardScreen} options={{ tabBarLabel: "Dashboard" }} />
-        <Tab.Screen name="MealPlanner" component={MealPlannerScreen} options={{ tabBarLabel: "Repas" }} />
-        <Tab.Screen name="ShoppingList" component={ShoppingListScreen} options={{ tabBarLabel: "Courses" }} />
+        <Tab.Screen
+          name="Calendar"
+          component={CalendarScreen}
+          options={{ tabBarLabel: "Calendrier" }}
+        />
+        <Tab.Screen
+          name="Dashboard"
+          component={GroupDashboardScreen}
+          options={{ tabBarLabel: "Dashboard" }}
+        />
+        <Tab.Screen
+          name="MealPlanner"
+          component={MealPlannerScreen}
+          options={{ tabBarLabel: "Repas" }}
+        />
+        <Tab.Screen
+          name="ShoppingList"
+          component={ShoppingListScreen}
+          options={{ tabBarLabel: "Courses" }}
+        />
       </Tab.Navigator>
     </View>
   );
@@ -176,14 +206,34 @@ export default function AppNavigator() {
       >
         {!isAuthenticated ? (
           <>
-            <Stack.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
-            <Stack.Screen name="Login" component={LoginScreen} options={{ title: "Connexion" }} />
-            <Stack.Screen name="Register" component={RegisterScreen} options={{ title: "Inscription" }} />
+            <Stack.Screen
+              name="Home"
+              component={HomeScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="Login"
+              component={LoginScreen}
+              options={{ title: "Connexion" }}
+            />
+            <Stack.Screen
+              name="Register"
+              component={RegisterScreen}
+              options={{ title: "Inscription" }}
+            />
           </>
         ) : (
           <>
-            <Stack.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
-            <Stack.Screen name="Groups" component={GroupsScreen} options={{ headerShown: false }} />
+            <Stack.Screen
+              name="Home"
+              component={HomeScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="Groups"
+              component={GroupsScreen}
+              options={{ headerShown: false }}
+            />
             <Stack.Screen
               name="MainTabs"
               component={MainTabs}
@@ -290,7 +340,8 @@ const navStyles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: theme.spacing.md,
-    paddingTop: Platform.OS === "ios" ? 54 : (StatusBar.currentHeight ?? 24) + 8,
+    paddingTop:
+      Platform.OS === "ios" ? 54 : (StatusBar.currentHeight ?? 24) + 8,
     paddingBottom: 10,
     backgroundColor: theme.colors.surface,
     borderBottomWidth: 1,
