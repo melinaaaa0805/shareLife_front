@@ -16,6 +16,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../assets/style/theme";
 import api from "../api/api";
 import { useGroup } from "../context/GroupContext";
+import { useWeek } from "../context/WeekContext";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -35,6 +36,30 @@ const FREQUENCIES = [
   { label: "Hors WE", value: "WEEKLY", icon: "calendar-outline" as const },
 ];
 
+const TASK_TYPES = [
+  {
+    value: "FAMILY",
+    label: "Toute la famille",
+    emoji: "👨‍👩‍👧‍👦",
+    desc: "Accessible à tous les membres",
+    color: theme.colors.mint,
+  },
+  {
+    value: "ADULT",
+    label: "Adulte",
+    emoji: "🧑",
+    desc: "Réservée aux adultes du groupe",
+    color: theme.colors.purple,
+  },
+  {
+    value: "ADULT_CHILD",
+    label: "Adulte & Enfant",
+    emoji: "🤝",
+    desc: "Peut être assignée à 2 personnes",
+    color: theme.colors.yellow,
+  },
+] as const;
+
 const WEIGHT_LEVELS = [
   { label: "Tranquille", color: "#4CAF50", emoji: "😌" },
   { label: "Ça va", color: "#8BC34A", emoji: "🙂" },
@@ -45,13 +70,6 @@ const WEIGHT_LEVELS = [
 
 // ─── Utils ────────────────────────────────────────────────────────────────────
 
-function getISOWeek(date: Date) {
-  const d = new Date(date);
-  d.setHours(0, 0, 0, 0);
-  d.setDate(d.getDate() + 3 - ((d.getDay() + 6) % 7));
-  const week1 = new Date(d.getFullYear(), 0, 4);
-  return 1 + Math.round(((d.getTime() - week1.getTime()) / 86400000 - 3 + ((week1.getDay() + 6) % 7)) / 7);
-}
 
 function computeTaskDate(year: number, weekNumber: number, dayOfWeek: number): string {
   const jan4 = new Date(year, 0, 4);
@@ -198,6 +216,7 @@ export default function AddTaskScreen() {
   const navigation = useNavigation();
   const { currentGroup } = useGroup();
   const idGroup = currentGroup?.id;
+  const { week: selectedWeek, year: selectedYear } = useWeek();
 
   const [title, setTitle] = useState(taskToEdit?.title ?? "");
   const [description, setDescription] = useState(taskToEdit?.description ?? "");
@@ -205,6 +224,9 @@ export default function AddTaskScreen() {
   const [frequency, setFrequency] = useState<string>(taskToEdit?.frequency ?? "ONCE");
   const [duration, setDuration] = useState(taskToEdit?.duration?.toString() ?? "");
   const [dayOfWeek, setDayOfWeek] = useState<number>(taskToEdit?.dayOfWeek ?? 0);
+  const [taskType, setTaskType] = useState<"FAMILY" | "ADULT" | "ADULT_CHILD">(
+    taskToEdit?.taskType ?? "FAMILY"
+  );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -214,7 +236,9 @@ export default function AddTaskScreen() {
   const card2Anim = useRef(new Animated.Value(24)).current;
   const card3Anim = useRef(new Animated.Value(24)).current;
   const card4Anim = useRef(new Animated.Value(24)).current;
+  const card5Anim = useRef(new Animated.Value(24)).current;
   const opacities = [
+    useRef(new Animated.Value(0)).current,
     useRef(new Animated.Value(0)).current,
     useRef(new Animated.Value(0)).current,
     useRef(new Animated.Value(0)).current,
@@ -224,7 +248,7 @@ export default function AddTaskScreen() {
   const shakeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    const cards = [card1Anim, card2Anim, card3Anim, card4Anim];
+    const cards = [card1Anim, card2Anim, card3Anim, card4Anim, card5Anim];
     Animated.stagger(80, [
       Animated.timing(headerAnim, { toValue: 1, duration: 300, useNativeDriver: true }),
       ...cards.map((c, i) =>
@@ -252,9 +276,8 @@ export default function AddTaskScreen() {
       shake();
       return;
     }
-    const today = new Date();
-    const weekNumber = getISOWeek(today);
-    const year = today.getFullYear();
+    const weekNumber = selectedWeek;
+    const year = selectedYear;
     const taskDate = computeTaskDate(year, weekNumber, dayOfWeek);
 
     const payload = {
@@ -264,20 +287,25 @@ export default function AddTaskScreen() {
       frequency,
       weekNumber,
       year,
-      day: taskDate,
+      date: taskDate,
       dayOfWeek,
-      duration: duration.trim() ? Number(duration) : null,
+      duration: duration.trim() ? Number(duration) : undefined,
       groupId: idGroup,
-      createdById: null,
+      taskType,
     };
 
     setLoading(true);
     setError(null);
+    console.log('[AddTask] payload:', JSON.stringify(payload));
     try {
       await api.post(`/tasks/group/${idGroup}`, payload);
       navigation.goBack();
     } catch (e: any) {
-      setError(e.response?.data?.message ?? "Impossible de créer la tâche.");
+      console.log('[AddTask] error status:', e.response?.status);
+      console.log('[AddTask] error data:', JSON.stringify(e.response?.data));
+      console.log('[AddTask] error message:', e.message);
+      const msg = e.response?.data?.message;
+      setError(Array.isArray(msg) ? msg.join(', ') : (msg ?? "Impossible de créer la tâche."));
       shake();
     } finally {
       setLoading(false);
@@ -418,8 +446,40 @@ export default function AddTaskScreen() {
             </View>
           )}
 
-          {/* ── Section 4 : Poids ── */}
+          {/* ── Section 4 : Type de tâche ── */}
           {animCard(card4Anim, opacities[3],
+            <View style={styles.card}>
+              <SectionHeader icon="people-outline" title="Type de tâche" />
+              {TASK_TYPES.map((t) => {
+                const active = taskType === t.value;
+                return (
+                  <TouchableOpacity
+                    key={t.value}
+                    style={[
+                      styles.taskTypeRow,
+                      active && { borderColor: t.color, backgroundColor: t.color + "18" },
+                    ]}
+                    onPress={() => setTaskType(t.value)}
+                    activeOpacity={0.75}
+                  >
+                    <Text style={styles.taskTypeEmoji}>{t.emoji}</Text>
+                    <View style={styles.taskTypeInfo}>
+                      <Text style={[styles.taskTypeLabel, active && { color: t.color }]}>
+                        {t.label}
+                      </Text>
+                      <Text style={styles.taskTypeDesc}>{t.desc}</Text>
+                    </View>
+                    {active && (
+                      <Ionicons name="checkmark-circle" size={20} color={t.color} />
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          )}
+
+          {/* ── Section 5 : Poids ── */}
+          {animCard(card5Anim, opacities[4],
             <View style={styles.card}>
               <SectionHeader icon="barbell-outline" title="Charge mentale" />
               <View style={styles.weightRow}>
@@ -639,6 +699,32 @@ const styles = StyleSheet.create({
   },
   weightScore: {
     fontSize: theme.typography.size.xs,
+    fontFamily: theme.typography.fontFamily.regular,
+    color: theme.colors.textSecondary,
+  },
+
+  // Task type
+  taskTypeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    padding: 12,
+    borderRadius: theme.radius.md,
+    borderWidth: 1.5,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.background,
+    marginBottom: 8,
+  },
+  taskTypeEmoji: { fontSize: 24, width: 32, textAlign: "center" },
+  taskTypeInfo: { flex: 1 },
+  taskTypeLabel: {
+    fontSize: theme.typography.size.sm,
+    fontFamily: theme.typography.fontFamily.semiBold,
+    color: theme.colors.textPrimary,
+    marginBottom: 2,
+  },
+  taskTypeDesc: {
+    fontSize: 11,
     fontFamily: theme.typography.fontFamily.regular,
     color: theme.colors.textSecondary,
   },

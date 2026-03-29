@@ -5,7 +5,9 @@ export interface User {
   lastName: string;
 }
 
-export type GroupMode = 'FREE' | 'FUNNY';
+export type GroupMode = 'FREE' | 'FUNNY' | 'SMART';
+export type MemberProfile = 'ADULT' | 'CHILD';
+export type TaskType = 'FAMILY' | 'ADULT' | 'ADULT_CHILD';
 
 export interface Group {
   id: string;
@@ -23,25 +25,26 @@ export interface GroupMember {
   id: string;
   firstName: string;
   email: string;
+  profile?: MemberProfile;
 }
-// types.ts
 
 export type Task = {
-  id: string; // UUID
-  title: string; // défaut "Sans titre"
+  id: string;
+  title: string;
   description?: string | null;
   frequency: "ONCE" | "DAILY" | "WEEKLY";
   weekNumber: number;
   year: number;
-  dayOfWeek: number; // 0 = lundi → 6 = dimanche
+  dayOfWeek: number;
   weight: number;
-  done: boolean; // remplace completed
+  done: boolean;
   duration?: number | null;
-  date?: string | null; // format YYYY-MM-DD
+  date?: string | null;
+  taskType?: TaskType;
   group?: Group;
   createdBy?: User;
   assignedUser?: User;
-  createdById: string; // UUID de l'utilisateur créateur
+  createdById: string;
   createdAt: string;
   updatedAt?: string | null;
 };
@@ -53,6 +56,7 @@ export type RootStackParamList = {
   MainTabs: undefined;
   Groups: undefined;
   Calendar: undefined;
+  MealPlanner: undefined;
   CreateGroup: undefined;
   GroupDetail: { groupId: string; group?: Group };
   GroupDashboard: { groupId: string; currentUserId: string };
@@ -66,6 +70,8 @@ export type RootStackParamList = {
   Settings: undefined;
   DayTasks: { date: string; dayIndex: number };
   ImportTask: { day: string };
+  WeekTemplate: undefined;
+  SmartAssign: { groupId: string };
   SpinWheel: { groupId: string; members: GroupMember[] };
   ForgotPassword: undefined;
 };

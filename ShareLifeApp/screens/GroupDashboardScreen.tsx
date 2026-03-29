@@ -2,23 +2,65 @@ import React, { useEffect, useState, useRef } from 'react';
 import {
   View,
   Text,
-  TouchableOpacity,
   StyleSheet,
   ScrollView,
   Animated,
   Pressable,
-  Platform,
+  Alert,
 } from 'react-native';
 import { useNavigation, useIsFocused } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../api/api';
-import { RootStackParamList, Task, User } from '../types/types';
+import { RootStackParamList, User } from '../types/types';
 import { useGroup } from '../context/GroupContext';
 import { useAuth } from '../context/AuthContext';
+import { useWeek } from '../context/WeekContext';
 import { theme } from '../assets/style/theme';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+type WeekTask = {
+  id: string;
+  title: string;
+  weight: number;
+  duration?: number | null;
+  done: boolean;
+  assignedUser: { id: string; firstName: string } | null;
+};
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+
+/**
+ * Charge mentale = somme sur mes tâches EN COURS de :
+ *   poids × (1 + min(durée, 120) / 60)
+ *
+ * Exemples :
+ *  - tâche légère (p=1, 15 min) → 1 × 1.25 = 1.25
+ *  - tâche moyenne (p=3, 30 min) → 3 × 1.5  = 4.5
+ *  - tâche lourde  (p=5, 60 min) → 5 × 2.0  = 10
+ */
+function computeMentalLoad(tasks: WeekTask[]): number {
+  return tasks.reduce((sum, t) => {
+    const dur = Math.min(t.duration ?? 30, 120);
+    return sum + (t.weight ?? 1) * (1 + dur / 60);
+  }, 0);
+}
+
+const LOAD_LEVELS = [
+  { max: 3,  label: 'Légère',  color: '#4CAF50' },
+  { max: 7,  label: 'Modérée', color: '#8BC34A' },
+  { max: 12, label: 'Élevée',  color: '#FFC107' },
+  { max: 18, label: 'Lourde',  color: '#FF9800' },
+  { max: Infinity, label: 'Intense', color: '#F44336' },
+];
+
+function getLoadLevel(score: number) {
+  return LOAD_LEVELS.find(l => score <= l.max) ?? LOAD_LEVELS[LOAD_LEVELS.length - 1];
+}
 
 // ─── Animated counter ────────────────────────────────────────────────────────
 
@@ -27,11 +69,7 @@ function AnimatedNumber({ value, style }: { value: number; style?: any }) {
   const [display, setDisplay] = useState(0);
 
   useEffect(() => {
-    Animated.timing(anim, {
-      toValue: value,
-      duration: 900,
-      useNativeDriver: false,
-    }).start();
+    Animated.timing(anim, { toValue: value, duration: 800, useNativeDriver: false }).start();
     const listener = anim.addListener(({ value: v }) => setDisplay(Math.round(v)));
     return () => anim.removeListener(listener);
   }, [value]);
@@ -39,14 +77,10 @@ function AnimatedNumber({ value, style }: { value: number; style?: any }) {
   return <Text style={style}>{display}</Text>;
 }
 
-// ─── Stat card ────────────────────────────────────────────────────────────────
+// ─── Stat card ───────────────────────────────────────────────────────────────
 
 function StatCard({
-  icon,
-  label,
-  value,
-  accent,
-  delay,
+  icon, label, value, accent, delay,
 }: {
   icon: keyof typeof Ionicons.glyphMap;
   label: string;
@@ -62,12 +96,10 @@ function StatCard({
       Animated.timing(opacityAnim, { toValue: 1, duration: 350, delay, useNativeDriver: true }),
       Animated.spring(slideAnim, { toValue: 0, useNativeDriver: true, tension: 80, friction: 8, delay }),
     ]).start();
-  }, []);
+  }, [delay]);
 
   return (
-    <Animated.View
-      style={[styles.statCard, { opacity: opacityAnim, transform: [{ translateY: slideAnim }] }]}
-    >
+    <Animated.View style={[styles.statCard, { opacity: opacityAnim, transform: [{ translateY: slideAnim }] }]}>
       <View style={[styles.statIconBox, { backgroundColor: accent + '22' }]}>
         <Ionicons name={icon} size={18} color={accent} />
       </View>
@@ -77,16 +109,160 @@ function StatCard({
   );
 }
 
-// ─── Action button ────────────────────────────────────────────────────────────
+// ─── Mental load card ─────────────────────────────────────────────────────────
+
+function MentalLoadCard({ score, delay }: { score: number; delay: number }) {
+  const level = getLoadLevel(score);
+  const MAX_DISPLAY = 20;
+  const pct = Math.min(score / MAX_DISPLAY, 1);
+
+  const slideAnim = useRef(new Animated.Value(16)).current;
+  const opacityAnim = useRef(new Animated.Value(0)).current;
+  const barAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(opacityAnim, { toValue: 1, duration: 350, delay, useNativeDriver: true }),
+      Animated.spring(slideAnim, { toValue: 0, useNativeDriver: true, tension: 80, friction: 8, delay }),
+      Animated.timing(barAnim, { toValue: pct, duration: 900, delay: delay + 100, useNativeDriver: false }),
+    ]).start();
+  }, [pct, delay]);
+
+  return (
+    <Animated.View style={[styles.loadCard, { opacity: opacityAnim, transform: [{ translateY: slideAnim }] }]}>
+      <View style={styles.loadTop}>
+        <View style={styles.loadLeft}>
+          <View style={styles.sectionIconBox}>
+            <Ionicons name="barbell-outline" size={14} color={theme.colors.purple} />
+          </View>
+          <Text style={styles.sectionTitle}>Charge mentale de la semaine</Text>
+        </View>
+        <View style={[styles.loadBadge, { backgroundColor: level.color + '20', borderColor: level.color + '50' }]}>
+          <Text style={[styles.loadBadgeText, { color: level.color }]}>{level.label}</Text>
+        </View>
+      </View>
+
+      {/* Gauge */}
+      <View style={styles.gaugeRow}>
+        <View style={styles.gaugeBg}>
+          <Animated.View
+            style={[
+              styles.gaugeFill,
+              {
+                width: barAnim.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] }),
+                backgroundColor: level.color,
+              },
+            ]}
+          />
+        </View>
+        <Text style={[styles.gaugeScore, { color: level.color }]}>
+          {score.toFixed(1)}
+        </Text>
+      </View>
+
+      <Text style={styles.loadHint}>
+        Somme du poids × durée de toutes tes tâches cette semaine
+      </Text>
+    </Animated.View>
+  );
+}
+
+// ─── My tasks progress ───────────────────────────────────────────────────────
+
+function MyTasksProgress({ done, total, delay }: { done: number; total: number; delay: number }) {
+  const pct = total > 0 ? done / total : 0;
+  const slideAnim = useRef(new Animated.Value(16)).current;
+  const opacityAnim = useRef(new Animated.Value(0)).current;
+  const barAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(opacityAnim, { toValue: 1, duration: 350, delay, useNativeDriver: true }),
+      Animated.spring(slideAnim, { toValue: 0, useNativeDriver: true, tension: 80, friction: 8, delay }),
+      Animated.timing(barAnim, { toValue: pct, duration: 900, delay: delay + 100, useNativeDriver: false }),
+    ]).start();
+  }, [pct, delay]);
+
+  return (
+    <Animated.View style={[styles.section, { opacity: opacityAnim, transform: [{ translateY: slideAnim }] }]}>
+      <View style={styles.sectionHeader}>
+        <View style={styles.sectionIconBox}>
+          <Ionicons name="star-outline" size={14} color={theme.colors.purple} />
+        </View>
+        <Text style={styles.sectionTitle}>Ma progression</Text>
+        <Text style={styles.progressFraction}>{done}/{total}</Text>
+      </View>
+      <View style={styles.progressBarBg}>
+        <Animated.View
+          style={[
+            styles.progressBarFill,
+            { width: barAnim.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] }) },
+          ]}
+        />
+      </View>
+      <Text style={styles.progressPct}>
+        {total > 0 ? Math.round(pct * 100) : 0}% accompli
+      </Text>
+    </Animated.View>
+  );
+}
+
+// ─── Member row ──────────────────────────────────────────────────────────────
+
+function MemberRow({
+  member, total, done, index, isOwner,
+}: {
+  member: User; total: number; done: number; index: number; isOwner: boolean;
+}) {
+  const barAnim = useRef(new Animated.Value(0)).current;
+  const opacityAnim = useRef(new Animated.Value(0)).current;
+  const pct = total > 0 ? done / total : 0;
+  const PALETTE = ['#9B7BEA', '#EAB1CF', '#FFE27A', '#A6D8C0', '#7BC8EA', '#EA9B7B'];
+  const color = PALETTE[index % PALETTE.length];
+
+  useEffect(() => {
+    const d = 400 + index * 80;
+    Animated.parallel([
+      Animated.timing(opacityAnim, { toValue: 1, duration: 300, delay: d, useNativeDriver: true }),
+      Animated.timing(barAnim, { toValue: pct, duration: 700, delay: d, useNativeDriver: false }),
+    ]).start();
+  }, [pct]);
+
+  return (
+    <Animated.View style={[styles.memberRow, { opacity: opacityAnim }]}>
+      <View style={[styles.memberAvatar, { backgroundColor: color + '30', borderColor: color + '60' }]}>
+        <Text style={[styles.memberInitials, { color }]}>
+          {(member.firstName?.[0] ?? '?').toUpperCase()}
+        </Text>
+      </View>
+      <View style={styles.memberInfo}>
+        <View style={styles.memberTopRow}>
+          <Text style={styles.memberName}>
+            {member.firstName ?? member.email}
+            {isOwner && <Text style={styles.ownerTag}> · admin</Text>}
+          </Text>
+          <Text style={styles.memberScore}>{done}/{total}</Text>
+        </View>
+        <View style={styles.memberBarBg}>
+          <Animated.View
+            style={[
+              styles.memberBarFill,
+              {
+                width: barAnim.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] }),
+                backgroundColor: color,
+              },
+            ]}
+          />
+        </View>
+      </View>
+    </Animated.View>
+  );
+}
+
+// ─── Action card ─────────────────────────────────────────────────────────────
 
 function ActionCard({
-  icon,
-  label,
-  sub,
-  accent,
-  onPress,
-  delay,
-  badge,
+  icon, label, sub, accent, onPress, delay, badge,
 }: {
   icon: keyof typeof Ionicons.glyphMap;
   label: string;
@@ -105,24 +281,15 @@ function ActionCard({
       Animated.timing(opacityAnim, { toValue: 1, duration: 300, delay, useNativeDriver: true }),
       Animated.spring(slideAnim, { toValue: 0, useNativeDriver: true, tension: 80, friction: 8, delay }),
     ]).start();
-  }, []);
+  }, [delay]);
 
   return (
-    <Animated.View
-      style={[
-        styles.actionCard,
-        { opacity: opacityAnim, transform: [{ translateY: slideAnim }, { scale }] },
-      ]}
-    >
+    <Animated.View style={[styles.actionCard, { opacity: opacityAnim, transform: [{ translateY: slideAnim }, { scale }] }]}>
       <Pressable
         style={styles.actionCardInner}
         onPress={onPress}
-        onPressIn={() =>
-          Animated.spring(scale, { toValue: 0.95, useNativeDriver: true, speed: 60 }).start()
-        }
-        onPressOut={() =>
-          Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 40 }).start()
-        }
+        onPressIn={() => Animated.spring(scale, { toValue: 0.95, useNativeDriver: true, speed: 60 }).start()}
+        onPressOut={() => Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 40 }).start()}
       >
         <View style={[styles.actionIconBox, { backgroundColor: accent + '20' }]}>
           <Ionicons name={icon} size={22} color={accent} />
@@ -139,84 +306,20 @@ function ActionCard({
   );
 }
 
-// ─── Member row ───────────────────────────────────────────────────────────────
-
-function MemberRow({
-  member,
-  total,
-  done,
-  index,
-  isOwner,
-}: {
-  member: User;
-  total: number;
-  done: number;
-  index: number;
-  isOwner: boolean;
-}) {
-  const barAnim = useRef(new Animated.Value(0)).current;
-  const opacityAnim = useRef(new Animated.Value(0)).current;
-  const pct = total > 0 ? done / total : 0;
-
-  useEffect(() => {
-    const delay = 400 + index * 80;
-    Animated.parallel([
-      Animated.timing(opacityAnim, { toValue: 1, duration: 300, delay, useNativeDriver: true }),
-      Animated.timing(barAnim, { toValue: pct, duration: 700, delay, useNativeDriver: false }),
-    ]).start();
-  }, [pct]);
-
-  const initials = (member.firstName?.[0] ?? '?').toUpperCase();
-  const PALETTE = ['#9B7BEA', '#EAB1CF', '#FFE27A', '#A6D8C0', '#7BC8EA', '#EA9B7B'];
-  const color = PALETTE[index % PALETTE.length];
-
-  return (
-    <Animated.View style={[styles.memberRow, { opacity: opacityAnim }]}>
-      <View style={[styles.memberAvatar, { backgroundColor: color + '30', borderColor: color + '60' }]}>
-        <Text style={[styles.memberInitials, { color }]}>{initials}</Text>
-      </View>
-      <View style={styles.memberInfo}>
-        <View style={styles.memberTopRow}>
-          <Text style={styles.memberName}>
-            {member.firstName ?? member.email}
-            {isOwner && (
-              <Text style={styles.ownerTag}> · admin</Text>
-            )}
-          </Text>
-          <Text style={styles.memberScore}>
-            {done}/{total}
-          </Text>
-        </View>
-        <View style={styles.memberBarBg}>
-          <Animated.View
-            style={[
-              styles.memberBarFill,
-              {
-                width: barAnim.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] }),
-                backgroundColor: color,
-              },
-            ]}
-          />
-        </View>
-      </View>
-    </Animated.View>
-  );
-}
-
-// ─── Main screen ──────────────────────────────────────────────────────────────
+// ─── Main screen ─────────────────────────────────────────────────────────────
 
 const GroupDashboardScreen = () => {
   const navigation = useNavigation<NavigationProp>();
   const isFocused = useIsFocused();
   const { currentGroup } = useGroup();
   const { user } = useAuth();
+  const { week, year, goToPrevWeek, goToNextWeek, goToToday, isCurrentWeek } = useWeek();
 
-  const [tasks, setTasks] = useState<Task[]>([]);
+  const [tasks, setTasks] = useState<WeekTask[]>([]);
   const [members, setMembers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
-
+  const [resetting, setResetting] = useState(false);
   const headerAnim = useRef(new Animated.Value(0)).current;
-  const progressWidth = useRef(new Animated.Value(0)).current;
 
   if (!currentGroup || !user) {
     return (
@@ -231,15 +334,21 @@ const GroupDashboardScreen = () => {
   const currentUserId = user.id;
 
   useEffect(() => {
-    if (isFocused) fetchGroup();
-  }, [isFocused]);
+    if (isFocused) {
+      headerAnim.setValue(0);
+      fetchData();
+    }
+  }, [isFocused, week, year]);
 
-  const fetchGroup = async () => {
+  const fetchData = async () => {
     setLoading(true);
     try {
-      const res = await api.get(`/groups/${currentGroup.id}`);
-      setTasks(res.data.tasks || []);
-      setMembers(res.data.members || []);
+      const [groupRes, tasksRes] = await Promise.all([
+        api.get(`/groups/${currentGroup.id}`),
+        api.get(`/tasks/week/${currentGroup.id}/${year}/${week}`),
+      ]);
+      setMembers(groupRes.data.members || []);
+      setTasks(tasksRes.data || []);
     } catch (err) {
       console.error(err);
     } finally {
@@ -247,34 +356,49 @@ const GroupDashboardScreen = () => {
     }
   };
 
-  const completedCount = tasks.filter(t => t.done).length;
-  const unassignedCount = tasks.filter(t => !t.assignedUser).length;
-  const myTasks = tasks.filter(t => t.assignedUser?.id === currentUserId);
-  const myDoneCount = myTasks.filter(t => t.done).length;
-  const totalTasks = tasks.length;
-  const completedPct = totalTasks ? completedCount / totalTasks : 0;
-  const isAdmin = currentGroup.owner?.id === user.id;
-
   useEffect(() => {
     if (!loading) {
-      Animated.parallel([
-        Animated.timing(headerAnim, { toValue: 1, duration: 400, useNativeDriver: true }),
-        Animated.timing(progressWidth, {
-          toValue: completedPct,
-          duration: 1000,
-          delay: 300,
-          useNativeDriver: false,
-        }),
-      ]).start();
+      Animated.timing(headerAnim, { toValue: 1, duration: 400, useNativeDriver: true }).start();
     }
   }, [loading]);
 
-  // Per-member stats from tasks
-  const memberStats = members.map(m => {
-    const assigned = tasks.filter(t => t.assignedUser?.id === (m as any).userId ?? m.id);
-    const done = assigned.filter(t => t.done).length;
-    return { member: m, total: assigned.length, done };
-  });
+  const handleResetWeek = () => {
+    Alert.alert(
+      'Remettre la semaine à zéro',
+      `Toutes les tâches de la semaine ${week} seront définitivement supprimées. Cette action est irréversible.`,
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Tout supprimer',
+          style: 'destructive',
+          onPress: async () => {
+            setResetting(true);
+            try {
+              await api.delete(`/tasks/week/${groupId}/${year}/${week}`);
+              await fetchData();
+            } catch {
+              Alert.alert('Erreur', 'Impossible de réinitialiser la semaine.');
+            } finally {
+              setResetting(false);
+            }
+          },
+        },
+      ],
+    );
+  };
+
+  // ── Computed stats ───────────────────────────────────────────────────────
+  const myTasks       = tasks.filter(t => t.assignedUser?.id === currentUserId);
+  const myDone        = myTasks.filter(t => t.done);
+  const unassigned    = tasks.filter(t => !t.assignedUser);
+  const mentalLoad    = computeMentalLoad(myTasks);
+  const isAdmin       = currentGroup.owner?.id === user.id;
+
+  const memberStats = members.map(m => ({
+    member: m,
+    total: tasks.filter(t => t.assignedUser?.id === m.id).length,
+    done:  tasks.filter(t => t.assignedUser?.id === m.id && t.done).length,
+  }));
 
   if (loading) {
     return (
@@ -285,17 +409,14 @@ const GroupDashboardScreen = () => {
   }
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.scroll}
-      showsVerticalScrollIndicator={false}
-    >
+    <ScrollView style={styles.container} contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+
       {/* ── Header ── */}
       <Animated.View style={[styles.header, { opacity: headerAnim }]}>
         <View style={styles.headerLeft}>
           <Text style={styles.groupName}>{currentGroup.name}</Text>
           <Text style={styles.groupSub}>
-            {members.length} membre{members.length > 1 ? 's' : ''} · Semaine en cours
+            {members.length} membre{members.length > 1 ? 's' : ''}
           </Text>
         </View>
         <View style={styles.headerBadges}>
@@ -314,94 +435,62 @@ const GroupDashboardScreen = () => {
         </View>
       </Animated.View>
 
-      {/* ── Progress card ── */}
-      <Animated.View style={[styles.progressCard, { opacity: headerAnim }]}>
-        <View style={styles.progressTop}>
-          <View>
-            <Text style={styles.progressTitle}>Progression de la semaine</Text>
-            <Text style={styles.progressSub}>
-              {completedCount} tâche{completedCount > 1 ? 's' : ''} terminée{completedCount > 1 ? 's' : ''} sur {totalTasks}
-            </Text>
-          </View>
-          <View style={styles.progressPctBox}>
-            <AnimatedNumber
-              value={Math.round(completedPct * 100)}
-              style={styles.progressPct}
-            />
-            <Text style={styles.progressPctSign}>%</Text>
-          </View>
-        </View>
-        <View style={styles.progressBarBg}>
-          <Animated.View
-            style={[
-              styles.progressBarFill,
-              {
-                width: progressWidth.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: ['0%', '100%'],
-                }),
-              },
-            ]}
-          />
-        </View>
-      </Animated.View>
+      {/* ── Week nav ── */}
+      <View style={styles.weekNav}>
+        <Pressable style={styles.weekNavArrow} onPress={goToPrevWeek}>
+          <Ionicons name="chevron-back" size={18} color={theme.colors.purple} />
+        </Pressable>
+        <Pressable onPress={goToToday} style={styles.weekNavCenter}>
+          <Text style={styles.weekNavLabel}>
+            Semaine {week}{year !== new Date().getFullYear() ? ` · ${year}` : ""}
+          </Text>
+          {!isCurrentWeek && (
+            <View style={styles.backTodayPill}>
+              <Text style={styles.backTodayText}>Revenir à aujourd'hui</Text>
+            </View>
+          )}
+        </Pressable>
+        <Pressable style={styles.weekNavArrow} onPress={goToNextWeek}>
+          <Ionicons name="chevron-forward" size={18} color={theme.colors.purple} />
+        </Pressable>
+      </View>
 
-      {/* ── Stat cards ── */}
+      {/* ── 3 stat cards ── */}
       <View style={styles.statsRow}>
-        <StatCard
-          icon="checkmark-circle-outline"
-          label="Terminées"
-          value={completedCount}
-          accent={theme.colors.success}
-          delay={100}
-        />
         <StatCard
           icon="person-outline"
           label="Mes tâches"
           value={myTasks.length}
           accent={theme.colors.purple}
-          delay={180}
+          delay={80}
+        />
+        <StatCard
+          icon="checkmark-circle-outline"
+          label="Terminées"
+          value={myDone.length}
+          accent={theme.colors.success}
+          delay={160}
         />
         <StatCard
           icon="alert-circle-outline"
           label="Non assignées"
-          value={unassignedCount}
+          value={unassigned.length}
           accent={theme.colors.warning}
-          delay={260}
+          delay={240}
         />
       </View>
 
-      {/* ── My tasks recap ── */}
+      {/* ── Mental load ── */}
+      <MentalLoadCard score={mentalLoad} delay={300} />
+
+      {/* ── My progress ── */}
       {myTasks.length > 0 && (
-        <Animated.View style={[styles.section, { opacity: headerAnim }]}>
-          <View style={styles.sectionHeader}>
-            <View style={styles.sectionIconBox}>
-              <Ionicons name="star-outline" size={14} color={theme.colors.purple} />
-            </View>
-            <Text style={styles.sectionTitle}>Mes tâches cette semaine</Text>
-          </View>
-          <View style={styles.myTasksBarBg}>
-            <Animated.View
-              style={[
-                styles.myTasksBarFill,
-                {
-                  width: progressWidth.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: ['0%', '100%'],
-                  }),
-                },
-              ]}
-            />
-          </View>
-          <Text style={styles.myTasksSub}>
-            {myDoneCount}/{myTasks.length} · {myTasks.length > 0 ? Math.round((myDoneCount / myTasks.length) * 100) : 0}% accompli
-          </Text>
-        </Animated.View>
+        <MyTasksProgress done={myDone.length} total={myTasks.length} delay={380} />
       )}
 
       {/* ── Members leaderboard ── */}
       {memberStats.length > 0 && (
-        <View style={styles.section}>
+        <Animated.View style={[styles.section, { opacity: headerAnim }]}>
           <View style={styles.sectionHeader}>
             <View style={styles.sectionIconBox}>
               <Ionicons name="people-outline" size={14} color={theme.colors.purple} />
@@ -410,15 +499,15 @@ const GroupDashboardScreen = () => {
           </View>
           {memberStats.map(({ member, total, done }, i) => (
             <MemberRow
-              key={(member as any).userId ?? member.id ?? i}
+              key={member.id ?? i}
               member={member}
               total={total}
               done={done}
               index={i}
-              isOwner={currentGroup.owner?.id === ((member as any).userId ?? member.id)}
+              isOwner={currentGroup.owner?.id === member.id}
             />
           ))}
-        </View>
+        </Animated.View>
       )}
 
       {/* ── Quick actions ── */}
@@ -433,10 +522,10 @@ const GroupDashboardScreen = () => {
           <ActionCard
             icon="checkbox-outline"
             label="Mes tâches"
-            sub={`${myTasks.length} assignée${myTasks.length > 1 ? 's' : ''}`}
+            sub={`${myTasks.length} assignée${myTasks.length !== 1 ? 's' : ''}`}
             accent={theme.colors.purple}
             onPress={() => navigation.navigate('TasksScreen', { groupId, currentUserId })}
-            delay={300}
+            delay={460}
           />
           <ActionCard
             icon="alert-circle-outline"
@@ -444,16 +533,24 @@ const GroupDashboardScreen = () => {
             sub="À prendre en charge"
             accent={theme.colors.warning}
             onPress={() => navigation.navigate('UnassignedTasks', { groupId })}
-            delay={360}
-            badge={unassignedCount}
+            delay={520}
+            badge={unassigned.length}
           />
           <ActionCard
             icon="people-outline"
             label="Membres"
-            sub={`${members.length} personne${members.length > 1 ? 's' : ''}`}
+            sub={`${members.length} personne${members.length !== 1 ? 's' : ''}`}
             accent={theme.colors.mint}
             onPress={() => navigation.navigate('GroupMembers', { groupId })}
-            delay={420}
+            delay={580}
+          />
+          <ActionCard
+            icon="calendar-clear-outline"
+            label="Modèle semaine"
+            sub="Appliquer le planning type"
+            accent={theme.colors.yellow}
+            onPress={() => navigation.navigate('WeekTemplate')}
+            delay={640}
           />
           {isAdmin && (
             <ActionCard
@@ -462,334 +559,126 @@ const GroupDashboardScreen = () => {
               sub="Ajouter un membre"
               accent={theme.colors.pink}
               onPress={() => navigation.navigate('AddMember', { groupId })}
-              delay={480}
+              delay={700}
             />
           )}
         </View>
       </View>
+
+      {/* ── Reset week (admin only) ── */}
+      {isAdmin && (
+        <Pressable
+          style={[styles.resetBtn, resetting && styles.resetBtnDisabled]}
+          onPress={handleResetWeek}
+          disabled={resetting}
+        >
+          <Ionicons name="trash-outline" size={16} color={theme.colors.danger} />
+          <Text style={styles.resetBtnText}>
+            {resetting ? 'Suppression…' : 'Remettre la semaine à zéro'}
+          </Text>
+        </Pressable>
+      )}
+
     </ScrollView>
   );
 };
 
 export default GroupDashboardScreen;
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
+// ─── Styles ──────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.background,
-  },
-  scroll: {
-    padding: theme.spacing.md,
-    paddingBottom: 40,
-    gap: theme.spacing.sm,
-  },
+  container: { flex: 1, backgroundColor: theme.colors.background },
+  scroll: { padding: theme.spacing.md, paddingBottom: 40, gap: theme.spacing.sm },
 
-  emptyContainer: {
-    flex: 1,
-    backgroundColor: theme.colors.background,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 12,
-  },
-  emptyText: {
-    fontSize: theme.typography.size.md,
-    fontFamily: theme.typography.fontFamily.regular,
-    color: theme.colors.textSecondary,
-  },
+  emptyContainer: { flex: 1, backgroundColor: theme.colors.background, alignItems: 'center', justifyContent: 'center', gap: 12 },
+  emptyText: { fontSize: theme.typography.size.md, fontFamily: theme.typography.fontFamily.regular, color: theme.colors.textSecondary },
 
-  // Header
-  header: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    marginBottom: theme.spacing.sm,
-  },
+  header: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: theme.spacing.sm },
+  weekNav: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: theme.colors.surface, borderRadius: theme.radius.md, padding: theme.spacing.sm, marginBottom: theme.spacing.sm, borderWidth: 1, borderColor: theme.colors.border },
+  weekNavArrow: { width: 34, height: 34, borderRadius: 17, backgroundColor: theme.colors.background, borderWidth: 1, borderColor: theme.colors.border, alignItems: 'center', justifyContent: 'center' },
+  weekNavCenter: { flex: 1, alignItems: 'center', gap: 4 },
+  weekNavLabel: { fontSize: theme.typography.size.sm, fontFamily: theme.typography.fontFamily.semiBold, color: theme.colors.textPrimary },
+  backTodayPill: { backgroundColor: theme.colors.purple + '22', borderRadius: theme.radius.round, paddingHorizontal: 10, paddingVertical: 2 },
+  backTodayText: { fontSize: 10, fontFamily: theme.typography.fontFamily.medium, color: theme.colors.purple },
   headerLeft: { flex: 1 },
-  groupName: {
-    fontSize: theme.typography.size.xl,
-    fontFamily: theme.typography.fontFamily.bold,
-    color: theme.colors.textPrimary,
-  },
-  groupSub: {
-    fontSize: theme.typography.size.xs,
-    fontFamily: theme.typography.fontFamily.regular,
-    color: theme.colors.textSecondary,
-    marginTop: 3,
-  },
-  headerBadges: {
-    flexDirection: 'row',
-    gap: 6,
-    flexWrap: 'wrap',
-    justifyContent: 'flex-end',
-    maxWidth: 140,
-  },
-  modeBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: theme.colors.pink + '18',
-    borderRadius: theme.radius.round,
-    paddingHorizontal: 9,
-    paddingVertical: 4,
-    borderWidth: 1,
-    borderColor: theme.colors.pink + '40',
-  },
-  adminBadge: {
-    backgroundColor: theme.colors.yellow + '15',
-    borderColor: theme.colors.yellow + '40',
-  },
-  modeBadgeText: {
-    fontSize: 11,
-    fontFamily: theme.typography.fontFamily.semiBold,
-    color: theme.colors.pink,
-  },
+  groupName: { fontSize: theme.typography.size.xl, fontFamily: theme.typography.fontFamily.bold, color: theme.colors.textPrimary },
+  groupSub: { fontSize: theme.typography.size.xs, fontFamily: theme.typography.fontFamily.regular, color: theme.colors.textSecondary, marginTop: 3 },
+  headerBadges: { flexDirection: 'row', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end', maxWidth: 140 },
+  modeBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: theme.colors.pink + '18', borderRadius: theme.radius.round, paddingHorizontal: 9, paddingVertical: 4, borderWidth: 1, borderColor: theme.colors.pink + '40' },
+  adminBadge: { backgroundColor: theme.colors.yellow + '15', borderColor: theme.colors.yellow + '40' },
+  modeBadgeText: { fontSize: 11, fontFamily: theme.typography.fontFamily.semiBold, color: theme.colors.pink },
 
-  // Progress card
-  progressCard: {
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.radius.lg,
-    padding: theme.spacing.md,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    marginBottom: theme.spacing.sm,
-  },
-  progressTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: theme.spacing.md,
-  },
-  progressTitle: {
-    fontSize: theme.typography.size.md,
-    fontFamily: theme.typography.fontFamily.semiBold,
-    color: theme.colors.textPrimary,
-  },
-  progressSub: {
-    fontSize: theme.typography.size.xs,
-    fontFamily: theme.typography.fontFamily.regular,
-    color: theme.colors.textSecondary,
-    marginTop: 3,
-  },
-  progressPctBox: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-  },
-  progressPct: {
-    fontSize: 36,
-    fontFamily: theme.typography.fontFamily.bold,
-    color: theme.colors.purple,
-    lineHeight: 40,
-  },
-  progressPctSign: {
-    fontSize: theme.typography.size.md,
-    fontFamily: theme.typography.fontFamily.bold,
-    color: theme.colors.purple,
-    marginBottom: 4,
-    marginLeft: 2,
-  },
-  progressBarBg: {
-    height: 8,
-    backgroundColor: theme.colors.border,
-    borderRadius: theme.radius.round,
-    overflow: 'hidden',
-  },
-  progressBarFill: {
-    height: '100%',
-    backgroundColor: theme.colors.purple,
-    borderRadius: theme.radius.round,
-  },
+  // Stat cards
+  statsRow: { flexDirection: 'row', gap: theme.spacing.sm },
+  statCard: { flex: 1, backgroundColor: theme.colors.surface, borderRadius: theme.radius.md, padding: 12, alignItems: 'center', borderWidth: 1, borderColor: theme.colors.border, gap: 4 },
+  statIconBox: { width: 32, height: 32, borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
+  statValue: { fontSize: theme.typography.size.xl, fontFamily: theme.typography.fontFamily.bold },
+  statLabel: { fontSize: 10, fontFamily: theme.typography.fontFamily.regular, color: theme.colors.textSecondary, textAlign: 'center' },
 
-  // Stat cards row
-  statsRow: {
-    flexDirection: 'row',
-    gap: theme.spacing.sm,
-    marginBottom: theme.spacing.sm,
-  },
-  statCard: {
-    flex: 1,
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.radius.md,
-    padding: 12,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    gap: 4,
-  },
-  statIconBox: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 4,
-  },
-  statValue: {
-    fontSize: theme.typography.size.xl,
-    fontFamily: theme.typography.fontFamily.bold,
-  },
-  statLabel: {
-    fontSize: 10,
-    fontFamily: theme.typography.fontFamily.regular,
-    color: theme.colors.textSecondary,
-    textAlign: 'center',
-  },
+  // Mental load card
+  loadCard: { backgroundColor: theme.colors.surface, borderRadius: theme.radius.lg, padding: theme.spacing.md, borderWidth: 1, borderColor: theme.colors.border },
+  loadTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: theme.spacing.md },
+  loadLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  loadBadge: { borderRadius: theme.radius.round, paddingHorizontal: 10, paddingVertical: 4, borderWidth: 1 },
+  loadBadgeText: { fontSize: 12, fontFamily: theme.typography.fontFamily.semiBold },
+  gaugeRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 },
+  gaugeBg: { flex: 1, height: 10, backgroundColor: theme.colors.border, borderRadius: 5, overflow: 'hidden' },
+  gaugeFill: { height: '100%', borderRadius: 5 },
+  gaugeScore: { fontSize: 14, fontFamily: theme.typography.fontFamily.bold, minWidth: 36, textAlign: 'right' },
+  loadHint: { fontSize: 11, fontFamily: theme.typography.fontFamily.regular, color: theme.colors.textSecondary },
 
-  // Section
-  section: {
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.radius.lg,
-    padding: theme.spacing.md,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    marginBottom: theme.spacing.sm,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: theme.spacing.md,
-  },
-  sectionIconBox: {
-    width: 24,
-    height: 24,
-    borderRadius: 8,
-    backgroundColor: theme.colors.purple + '20',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  sectionTitle: {
-    fontSize: theme.typography.size.xs,
-    fontFamily: theme.typography.fontFamily.semiBold,
-    color: theme.colors.textSecondary,
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-  },
-
-  // My tasks bar
-  myTasksBarBg: {
-    height: 6,
-    backgroundColor: theme.colors.border,
-    borderRadius: 3,
-    overflow: 'hidden',
-    marginBottom: 8,
-  },
-  myTasksBarFill: {
-    height: '100%',
-    backgroundColor: theme.colors.purple,
-    borderRadius: 3,
-  },
-  myTasksSub: {
-    fontSize: theme.typography.size.xs,
-    fontFamily: theme.typography.fontFamily.medium,
-    color: theme.colors.textSecondary,
-  },
+  // My progress
+  section: { backgroundColor: theme.colors.surface, borderRadius: theme.radius.lg, padding: theme.spacing.md, borderWidth: 1, borderColor: theme.colors.border },
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: theme.spacing.md },
+  sectionIconBox: { width: 24, height: 24, borderRadius: 8, backgroundColor: theme.colors.purple + '20', alignItems: 'center', justifyContent: 'center' },
+  sectionTitle: { flex: 1, fontSize: theme.typography.size.xs, fontFamily: theme.typography.fontFamily.semiBold, color: theme.colors.textSecondary, textTransform: 'uppercase', letterSpacing: 0.8 },
+  progressFraction: { fontSize: 12, fontFamily: theme.typography.fontFamily.semiBold, color: theme.colors.textSecondary },
+  progressBarBg: { height: 6, backgroundColor: theme.colors.border, borderRadius: 3, overflow: 'hidden', marginBottom: 6 },
+  progressBarFill: { height: '100%', backgroundColor: theme.colors.purple, borderRadius: 3 },
+  progressPct: { fontSize: 11, fontFamily: theme.typography.fontFamily.medium, color: theme.colors.textSecondary, textAlign: 'right' },
 
   // Members
-  memberRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginBottom: 14,
-  },
-  memberAvatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1.5,
-  },
-  memberInitials: {
-    fontSize: 14,
-    fontFamily: theme.typography.fontFamily.bold,
-  },
+  memberRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 14 },
+  memberAvatar: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5 },
+  memberInitials: { fontSize: 14, fontFamily: theme.typography.fontFamily.bold },
   memberInfo: { flex: 1 },
-  memberTopRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 5,
-  },
-  memberName: {
-    fontSize: theme.typography.size.sm,
-    fontFamily: theme.typography.fontFamily.semiBold,
-    color: theme.colors.textPrimary,
-  },
-  ownerTag: {
-    fontSize: 11,
-    fontFamily: theme.typography.fontFamily.regular,
-    color: theme.colors.textSecondary,
-  },
-  memberScore: {
-    fontSize: 11,
-    fontFamily: theme.typography.fontFamily.semiBold,
-    color: theme.colors.textSecondary,
-  },
-  memberBarBg: {
-    height: 4,
-    backgroundColor: theme.colors.border,
-    borderRadius: 2,
-    overflow: 'hidden',
-  },
-  memberBarFill: {
-    height: '100%',
-    borderRadius: 2,
-  },
+  memberTopRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 },
+  memberName: { fontSize: theme.typography.size.sm, fontFamily: theme.typography.fontFamily.semiBold, color: theme.colors.textPrimary },
+  ownerTag: { fontSize: 11, fontFamily: theme.typography.fontFamily.regular, color: theme.colors.textSecondary },
+  memberScore: { fontSize: 11, fontFamily: theme.typography.fontFamily.semiBold, color: theme.colors.textSecondary },
+  memberBarBg: { height: 4, backgroundColor: theme.colors.border, borderRadius: 2, overflow: 'hidden' },
+  memberBarFill: { height: '100%', borderRadius: 2 },
 
-  // Actions grid
-  actionsGrid: {
+  // Actions
+  actionsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm },
+  actionCard: { width: '47%', backgroundColor: theme.colors.background, borderRadius: theme.radius.md, borderWidth: 1, borderColor: theme.colors.border, overflow: 'hidden' },
+  actionCardInner: { padding: 14 },
+  actionIconBox: { width: 42, height: 42, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
+  actionBadge: { position: 'absolute', top: -4, right: -4, minWidth: 18, height: 18, borderRadius: 9, backgroundColor: theme.colors.warning, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4, borderWidth: 2, borderColor: theme.colors.surface },
+  actionBadgeText: { fontSize: 9, fontFamily: theme.typography.fontFamily.bold, color: theme.colors.background },
+  actionLabel: { fontSize: theme.typography.size.sm, fontFamily: theme.typography.fontFamily.semiBold, color: theme.colors.textPrimary, marginBottom: 3 },
+  actionSub: { fontSize: 11, fontFamily: theme.typography.fontFamily.regular, color: theme.colors.textSecondary },
+
+  // Reset week
+  resetBtn: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: theme.spacing.sm,
-  },
-  actionCard: {
-    width: '47%',
-    backgroundColor: theme.colors.background,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginHorizontal: theme.spacing.md,
+    marginTop: theme.spacing.md,
+    marginBottom: theme.spacing.xl,
+    paddingVertical: 14,
     borderRadius: theme.radius.md,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    overflow: 'hidden',
+    borderWidth: 1.5,
+    borderColor: theme.colors.danger + '50',
+    backgroundColor: theme.colors.danger + '0C',
   },
-  actionCardInner: {
-    padding: 14,
-  },
-  actionIconBox: {
-    width: 42,
-    height: 42,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 10,
-  },
-  actionBadge: {
-    position: 'absolute',
-    top: -4,
-    right: -4,
-    minWidth: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: theme.colors.warning,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 4,
-    borderWidth: 2,
-    borderColor: theme.colors.surface,
-  },
-  actionBadgeText: {
-    fontSize: 9,
-    fontFamily: theme.typography.fontFamily.bold,
-    color: theme.colors.background,
-  },
-  actionLabel: {
+  resetBtnDisabled: { opacity: 0.5 },
+  resetBtnText: {
     fontSize: theme.typography.size.sm,
     fontFamily: theme.typography.fontFamily.semiBold,
-    color: theme.colors.textPrimary,
-    marginBottom: 3,
-  },
-  actionSub: {
-    fontSize: 11,
-    fontFamily: theme.typography.fontFamily.regular,
-    color: theme.colors.textSecondary,
+    color: theme.colors.danger,
   },
 });

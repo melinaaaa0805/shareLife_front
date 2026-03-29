@@ -97,7 +97,7 @@ const AddMemberScreen = () => {
 
     setLoading(true);
     try {
-      await api.post(`/group-member/${groupId}`, { email: email.trim() });
+      await api.post(`/group-invitations/${groupId}`, { email: email.trim() });
       setSuccess(true);
       setTimeout(() => navigation.goBack(), 1800);
     } catch (err: any) {
@@ -105,8 +105,7 @@ const AddMemberScreen = () => {
       const message =
         status === 404
           ? "Aucun compte trouvé avec cet email."
-          : err.response?.data?.message ?? "Impossible d'ajouter le membre.";
-      // Shake animation on error
+          : err.response?.data?.message ?? "Impossible d'envoyer l'invitation.";
       Animated.sequence([
         Animated.timing(cardSlide, { toValue: -8, duration: 60, useNativeDriver: true }),
         Animated.timing(cardSlide, { toValue: 8, duration: 60, useNativeDriver: true }),
@@ -114,7 +113,6 @@ const AddMemberScreen = () => {
         Animated.timing(cardSlide, { toValue: 6, duration: 60, useNativeDriver: true }),
         Animated.timing(cardSlide, { toValue: 0, duration: 60, useNativeDriver: true }),
       ]).start();
-      // Show inline error instead of Alert
       setErrorMsg(message);
     } finally {
       setLoading(false);
@@ -135,7 +133,7 @@ const AddMemberScreen = () => {
           loop={false}
           style={styles.successLottie}
         />
-        <Text style={styles.successText}>Membre ajouté ! 🎉</Text>
+        <Text style={styles.successText}>Invitation envoyée ! 🎉</Text>
       </View>
     );
   }
@@ -221,7 +219,7 @@ const AddMemberScreen = () => {
             disabled={!canSubmit}
           >
             <Text style={styles.buttonText}>
-              {loading ? "Envoi en cours…" : "Ajouter au groupe"}
+              {loading ? "Envoi en cours…" : "Envoyer l'invitation"}
             </Text>
           </Pressable>
         </Animated.View>

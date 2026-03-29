@@ -4,10 +4,13 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  FlatList,
   Animated,
   Platform,
   Pressable,
+  ScrollView,
+  Image,
+  Alert,
+  Modal,
 } from "react-native";
 import { useRoute, useNavigation, useIsFocused } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
@@ -18,6 +21,34 @@ import { useAuth } from "../context/AuthContext";
 
 const DAYS_FR_FULL = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
 const MONTHS_FR = ["janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.", "août", "sept.", "oct.", "nov.", "déc."];
+
+// ─── Helpers semaine ISO ──────────────────────────────────────────────────────
+function getISOWeek(d: Date): { week: number; year: number } {
+  const date = new Date(d.getTime());
+  date.setHours(0, 0, 0, 0);
+  date.setDate(date.getDate() + 3 - ((date.getDay() + 6) % 7));
+  const week1 = new Date(date.getFullYear(), 0, 4);
+  const week =
+    Math.round(((date.getTime() - week1.getTime()) / 86400000 + ((week1.getDay() + 6) % 7)) / 7) + 1;
+  return { week, year: date.getFullYear() };
+}
+
+// ─── Types repas ──────────────────────────────────────────────────────────────
+type MealIngredient = { name: string; quantity: string; unit?: string };
+type WeeklyMeal = {
+  id: string;
+  name: string;
+  imageUrl?: string | null;
+  ingredients: MealIngredient[];
+  proposedBy?: { id: string; firstName: string } | null;
+  votes?: { id: string; user: { id: string; firstName: string }; dayOfWeek: number; meal: { id: string } }[];
+};
+type MealVote = {
+  id: string;
+  user: { id: string; firstName: string };
+  dayOfWeek: number;
+  meal: { id: string; name: string };
+};
 
 /** Parse un YYYY-MM-DD en Date locale (évite le décalage UTC de new Date("YYYY-MM-DD")) */
 function parseDateStr(s: string): Date {
@@ -52,13 +83,17 @@ type TaskItem = {
   } | null;
 };
 
+type Member = { id: string; firstName: string; email: string };
+
 function TaskCard({
   item,
   userId,
   isFunnyMode,
   isWeeklyAdmin,
   onAssign,
+  onAssignTo,
   onDone,
+  onDelete,
   index,
 }: {
   item: TaskItem;
@@ -66,7 +101,9 @@ function TaskCard({
   isFunnyMode: boolean;
   isWeeklyAdmin: boolean;
   onAssign: (id: string) => void;
+  onAssignTo: (taskId: string) => void;
   onDone: (id: string) => void;
+  onDelete: (id: string) => void;
   index: number;
 }) {
   const isAssigned = !!item.taskAssignment;
@@ -120,11 +157,20 @@ function TaskCard({
           <Text style={[styles.taskTitle, isDone && styles.taskTitleDone]} numberOfLines={2}>
             {item.title}
           </Text>
-          {isDone && (
-            <View style={styles.doneBadge}>
-              <Ionicons name="checkmark" size={12} color="#FFF" />
-            </View>
-          )}
+          <View style={styles.cardTopRight}>
+            {isDone && (
+              <View style={styles.doneBadge}>
+                <Ionicons name="checkmark" size={12} color="#FFF" />
+              </View>
+            )}
+            <TouchableOpacity
+              style={styles.deleteTaskBtn}
+              onPress={() => onDelete(item.id)}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Ionicons name="trash-outline" size={15} color={theme.colors.danger} />
+            </TouchableOpacity>
+          </View>
         </View>
 
         {item.description ? (
@@ -169,10 +215,16 @@ function TaskCard({
 
         {/* Actions */}
         <View style={styles.actions}>
-          {!isAssigned && (!isFunnyMode || isWeeklyAdmin) && (
+          {!isAssigned && !isFunnyMode && (
             <TouchableOpacity style={styles.assignBtn} onPress={() => onAssign(item.id)} activeOpacity={0.8}>
               <Ionicons name="person-add-outline" size={13} color="#FFF" />
               <Text style={styles.assignBtnText}>S'assigner</Text>
+            </TouchableOpacity>
+          )}
+          {!isAssigned && isFunnyMode && isWeeklyAdmin && (
+            <TouchableOpacity style={[styles.assignBtn, styles.assignBtnFunny]} onPress={() => onAssignTo(item.id)} activeOpacity={0.8}>
+              <Ionicons name="crown-outline" size={13} color="#1A1A1A" />
+              <Text style={[styles.assignBtnText, { color: "#1A1A1A" }]}>Assigner à…</Text>
             </TouchableOpacity>
           )}
 
@@ -209,6 +261,17 @@ export default function DayTasksScreen() {
 
   const [dayTasks, setDayTasks] = useState<TaskItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [members, setMembers] = useState<Member[]>([]);
+  const [assignModalTaskId, setAssignModalTaskId] = useState<string | null>(null);
+
+  // ── Repas ────────────────────────────────────────────────────────────────
+  const { week: weekNumber, year } = getISOWeek(parseDateStr(date));
+  // dayIndex 0=lundi … 6=dimanche à partir de parseDateStr
+  const dayOfWeek = (parseDateStr(date).getDay() + 6) % 7;
+  const [weekMeals, setWeekMeals] = useState<WeeklyMeal[]>([]);
+  const [dayVotes, setDayVotes] = useState<MealVote[]>([]);
+  const [votedMealId, setVotedMealId] = useState<string | null>(null);
+  const [mealSectionOpen, setMealSectionOpen] = useState(true);
 
   const isFunnyMode = currentGroup?.mode === "FUNNY";
   const isWeeklyAdmin = currentGroup?.weeklyAdmin?.id === userId;
@@ -224,8 +287,79 @@ export default function DayTasksScreen() {
   }, []);
 
   useEffect(() => {
-    if (isFocused) fetchDayTasks();
+    if (isFocused) {
+      fetchDayTasks();
+      fetchMealsAndVotes();
+      if (isFunnyMode && isWeeklyAdmin && currentGroup?.id) {
+        api.get(`/group-member/${currentGroup.id}`)
+          .then(r => setMembers(r.data || []))
+          .catch(() => {});
+      }
+    }
   }, [isFocused]);
+
+  const fetchMealsAndVotes = async () => {
+    if (!currentGroup) return;
+    try {
+      const [mealsRes, votesRes, myVoteRes] = await Promise.all([
+        api.get(`meals/${currentGroup.id}/${year}/${weekNumber}`),
+        api.get(`meal-votes/${currentGroup.id}/${year}/${weekNumber}/${dayOfWeek}`),
+        api.get(`meal-votes/my/${currentGroup.id}/${year}/${weekNumber}/${dayOfWeek}`),
+      ]);
+      setWeekMeals(mealsRes.data);
+      setDayVotes(votesRes.data);
+      setVotedMealId(myVoteRes.data?.meal?.id ?? null);
+    } catch (e) {
+      console.error("Erreur fetch repas/votes", e);
+    }
+  };
+
+  const handleVoteMeal = async (mealId: string) => {
+    if (!currentGroup) return;
+    // Si déjà voté pour ce repas → supprimer le vote (toggle)
+    if (votedMealId === mealId) {
+      const myVote = dayVotes.find((v) => v.user?.id === userId && v.meal?.id === mealId);
+      if (myVote) {
+        try {
+          await api.delete(`meal-votes/${myVote.id}`);
+          setVotedMealId(null);
+          setDayVotes((prev) => prev.filter((v) => v.id !== myVote.id));
+        } catch (e) {
+          Alert.alert("Erreur", "Impossible de supprimer le vote.");
+        }
+      }
+      return;
+    }
+    try {
+      const res = await api.post("meal-votes", {
+        mealId,
+        dayOfWeek,
+        groupId: currentGroup.id,
+        weekNumber,
+        year,
+      });
+      setVotedMealId(mealId);
+      setDayVotes((prev) => {
+        const filtered = prev.filter((v) => v.user?.id !== userId);
+        return res.data ? [...filtered, res.data] : filtered;
+      });
+    } catch (e) {
+      Alert.alert("Erreur", "Impossible de voter.");
+    }
+  };
+
+  const handleAddIngredientsToShopping = async (meal: WeeklyMeal) => {
+    if (!currentGroup) return;
+    try {
+      await api.post(`meals/${meal.id}/add-to-shopping`, {
+        groupId: currentGroup.id,
+        weekNumber,
+      });
+      Alert.alert("Ajouté !", `Les ingrédients de "${meal.name}" ont été ajoutés à la liste de courses.`);
+    } catch {
+      Alert.alert("Erreur", "Impossible d'ajouter les ingrédients.");
+    }
+  };
 
   const fetchDayTasks = async () => {
     setLoading(true);
@@ -240,28 +374,72 @@ export default function DayTasksScreen() {
   };
 
   const assignTask = async (taskId: string) => {
+    // Mise à jour optimiste immédiate pour fluidité UX
+    setDayTasks(prev =>
+      prev.map(t =>
+        t.id === taskId
+          ? { ...t, taskAssignment: { user: { id: userId!, firstName: user?.firstName }, status: "PENDING" } }
+          : t
+      )
+    );
     try {
       await api.post(`task-assignment/${taskId}`);
-      setDayTasks(prev =>
-        prev.map(t =>
-          t.id === taskId
-            ? { ...t, taskAssignment: { user: { id: userId!, firstName: user?.firstName }, status: "PENDING" } }
-            : t
-        )
-      );
-    } catch (e) {
+    } catch (e: any) {
+      // Si déjà assignée on recharge les tâches pour avoir l'état réel
       console.error("Erreur assign tâche", e);
+      fetchDayTasks();
     }
   };
 
   const toggleDone = async (taskId: string) => {
+    setDayTasks(prev =>
+      prev.map(t => (t.id === taskId ? { ...t, taskAssignment: { ...t.taskAssignment, status: "DONE" } } : t))
+    );
     try {
-      await api.patch(`tasks/${taskId}`, { status: "DONE" });
-      setDayTasks(prev =>
-        prev.map(t => (t.id === taskId ? { ...t, taskAssignment: { ...t.taskAssignment, status: "DONE" } } : t))
-      );
+      await api.patch(`task-assignment/${taskId}/done`);
     } catch (e) {
       console.error("Erreur update tâche", e);
+      fetchDayTasks();
+    }
+  };
+
+  const deleteTask = (taskId: string) => {
+    Alert.alert(
+      'Supprimer la tâche',
+      'Cette tâche sera définitivement supprimée.',
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Supprimer',
+          style: 'destructive',
+          onPress: async () => {
+            setDayTasks(prev => prev.filter(t => t.id !== taskId));
+            try {
+              await api.delete(`/tasks/${taskId}`);
+            } catch {
+              fetchDayTasks();
+            }
+          },
+        },
+      ],
+    );
+  };
+
+  const assignTaskToMember = async (taskId: string, memberId: string) => {
+    setAssignModalTaskId(null);
+    const member = members.find(m => m.id === memberId);
+    setDayTasks(prev =>
+      prev.map(t =>
+        t.id === taskId
+          ? { ...t, taskAssignment: { user: { id: memberId, firstName: member?.firstName }, status: "PENDING" } }
+          : t
+      )
+    );
+    try {
+      await api.post(`task-assignment/${taskId}/assign-to/${memberId}`);
+    } catch (e) {
+      console.error("Erreur assignation", e);
+      fetchDayTasks();
     }
   };
 
@@ -333,35 +511,160 @@ export default function DayTasksScreen() {
         </Animated.View>
       )}
 
-      {/* Task list */}
-      <FlatList
-        data={dayTasks}
-        keyExtractor={item => item.id}
-        renderItem={({ item, index }) => (
+      {/* Task list + Meal section */}
+      <ScrollView contentContainerStyle={styles.listContent} showsVerticalScrollIndicator={false}>
+        {dayTasks.map((item, index) => (
           <TaskCard
+            key={item.id}
             item={item}
             userId={userId}
             isFunnyMode={isFunnyMode}
             isWeeklyAdmin={isWeeklyAdmin}
             onAssign={assignTask}
+            onAssignTo={(id) => setAssignModalTaskId(id)}
             onDone={toggleDone}
+            onDelete={deleteTask}
             index={index}
           />
-        )}
-        contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
-        ListEmptyComponent={
-          !loading ? (
-            <View style={styles.emptyState}>
-              <View style={styles.emptyIconCircle}>
-                <Ionicons name="sunny-outline" size={32} color={theme.colors.purple} />
-              </View>
-              <Text style={styles.emptyTitle}>Journée libre !</Text>
-              <Text style={styles.emptySub}>Aucune tâche prévue pour cette journée.</Text>
+        ))}
+
+        {!loading && dayTasks.length === 0 && (
+          <View style={styles.emptyState}>
+            <View style={styles.emptyIconCircle}>
+              <Ionicons name="sunny-outline" size={32} color={theme.colors.purple} />
             </View>
-          ) : null
-        }
-      />
+            <Text style={styles.emptyTitle}>Journée libre !</Text>
+            <Text style={styles.emptySub}>Aucune tâche prévue pour cette journée.</Text>
+          </View>
+        )}
+
+        {/* ── Section repas du jour ────────────────────────────────────────── */}
+        <View style={styles.mealSection}>
+          <TouchableOpacity
+            style={styles.mealSectionHeader}
+            onPress={() => setMealSectionOpen((v) => !v)}
+          >
+            <View style={styles.mealSectionTitleRow}>
+              <Ionicons name="restaurant-outline" size={16} color={theme.colors.mint} />
+              <Text style={styles.mealSectionTitle}>Repas du jour</Text>
+              {dayVotes.length > 0 && (
+                <View style={styles.mealVotesBadge}>
+                  <Text style={styles.mealVotesBadgeText}>{dayVotes.length} vote{dayVotes.length > 1 ? "s" : ""}</Text>
+                </View>
+              )}
+            </View>
+            <Ionicons
+              name={mealSectionOpen ? "chevron-up" : "chevron-down"}
+              size={16}
+              color={theme.colors.textSecondary}
+            />
+          </TouchableOpacity>
+
+          {mealSectionOpen && (
+            <View style={styles.mealSectionBody}>
+              {weekMeals.length === 0 ? (
+                <Text style={styles.noMealsText}>
+                  Aucun repas proposé cette semaine. Ajoutez-en depuis l'onglet Repas.
+                </Text>
+              ) : (
+                weekMeals.map((meal) => {
+                  const mealDayVotes = dayVotes.filter((v) => v.meal?.id === meal.id);
+                  const isVoted = votedMealId === meal.id;
+                  return (
+                    <View
+                      key={meal.id}
+                      style={[styles.mealVoteCard, isVoted && styles.mealVoteCardActive]}
+                    >
+                      <View style={styles.mealVoteCardLeft}>
+                        {meal.imageUrl ? (
+                          <Image source={{ uri: meal.imageUrl }} style={styles.mealVoteImage} />
+                        ) : (
+                          <View style={styles.mealVoteImagePlaceholder}>
+                            <Ionicons name="restaurant-outline" size={16} color={theme.colors.mint} />
+                          </View>
+                        )}
+                        <View style={styles.mealVoteInfo}>
+                          <Text style={styles.mealVoteName} numberOfLines={1}>{meal.name}</Text>
+                          {mealDayVotes.length > 0 && (
+                            <Text style={styles.mealVoteVoters} numberOfLines={1}>
+                              {mealDayVotes.map((v) => v.user?.firstName).join(", ")}
+                            </Text>
+                          )}
+                        </View>
+                      </View>
+                      <View style={styles.mealVoteCardRight}>
+                        {mealDayVotes.length > 0 && (
+                          <View style={styles.mealVoteCount}>
+                            <Text style={styles.mealVoteCountText}>{mealDayVotes.length}</Text>
+                          </View>
+                        )}
+                        <TouchableOpacity
+                          style={[styles.voteBtn, isVoted && styles.voteBtnActive]}
+                          onPress={() => handleVoteMeal(meal.id)}
+                        >
+                          <Ionicons
+                            name={isVoted ? "heart" : "heart-outline"}
+                            size={14}
+                            color={isVoted ? "#FFF" : theme.colors.textSecondary}
+                          />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={styles.cartBtn}
+                          onPress={() => handleAddIngredientsToShopping(meal)}
+                        >
+                          <Ionicons name="cart-outline" size={14} color={theme.colors.mint} />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  );
+                })
+              )}
+            </View>
+          )}
+        </View>
+      </ScrollView>
+
+      {/* ── Modal assignation membre (mode Drôle) ────────────────────────── */}
+      <Modal
+        visible={assignModalTaskId !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setAssignModalTaskId(null)}
+      >
+        <Pressable style={styles.modalOverlay} onPress={() => setAssignModalTaskId(null)}>
+          <Pressable style={styles.modalSheet} onPress={() => {}}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Assigner à…</Text>
+              <TouchableOpacity onPress={() => setAssignModalTaskId(null)}>
+                <Ionicons name="close" size={20} color={theme.colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+            {members.length === 0 ? (
+              <Text style={styles.modalEmpty}>Aucun membre disponible.</Text>
+            ) : (
+              members.map((member) => (
+                <TouchableOpacity
+                  key={member.id}
+                  style={styles.memberRow}
+                  activeOpacity={0.7}
+                  onPress={() => assignModalTaskId && assignTaskToMember(assignModalTaskId, member.id)}
+                >
+                  <View style={styles.memberAvatar}>
+                    <Text style={styles.memberAvatarText}>
+                      {member.firstName?.[0]?.toUpperCase() ?? "?"}
+                    </Text>
+                  </View>
+                  <View style={styles.memberInfo}>
+                    <Text style={styles.memberName}>{member.firstName}</Text>
+                    <Text style={styles.memberEmail} numberOfLines={1}>{member.email}</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={16} color={theme.colors.textSecondary} />
+                </TouchableOpacity>
+              ))
+            )}
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -520,6 +823,20 @@ const styles = StyleSheet.create({
     textDecorationLine: "line-through",
     color: theme.colors.textSecondary,
   },
+  cardTopRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    flexShrink: 0,
+  },
+  deleteTaskBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: theme.colors.danger + "15",
+    alignItems: "center",
+    justifyContent: "center",
+  },
   doneBadge: {
     width: 20,
     height: 20,
@@ -631,7 +948,7 @@ const styles = StyleSheet.create({
   emptyState: {
     alignItems: "center",
     justifyContent: "center",
-    paddingTop: 80,
+    paddingTop: 40,
     gap: 12,
   },
   emptyIconCircle: {
@@ -653,5 +970,205 @@ const styles = StyleSheet.create({
     fontFamily: theme.typography.fontFamily.regular,
     color: theme.colors.textSecondary,
     textAlign: "center",
+  },
+
+  // Meal section
+  mealSection: {
+    marginTop: theme.spacing.md,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    overflow: "hidden",
+  },
+  mealSectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: 12,
+  },
+  mealSectionTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  mealSectionTitle: {
+    fontSize: theme.typography.size.md,
+    fontFamily: theme.typography.fontFamily.semiBold,
+    color: theme.colors.textPrimary,
+  },
+  mealVotesBadge: {
+    backgroundColor: theme.colors.mint + "25",
+    borderRadius: theme.radius.round,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+  },
+  mealVotesBadgeText: {
+    fontSize: 11,
+    fontFamily: theme.typography.fontFamily.semiBold,
+    color: theme.colors.mint,
+  },
+  mealSectionBody: {
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
+    padding: 10,
+    gap: 6,
+  },
+  noMealsText: {
+    fontSize: theme.typography.size.xs,
+    fontFamily: theme.typography.fontFamily.regular,
+    color: theme.colors.textSecondary,
+    textAlign: "center",
+    paddingVertical: 8,
+  },
+  mealVoteCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: theme.colors.background,
+    borderRadius: theme.radius.sm,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  mealVoteCardActive: {
+    borderColor: theme.colors.mint + "60",
+    backgroundColor: theme.colors.mint + "0A",
+  },
+  mealVoteCardLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    flex: 1,
+  },
+  mealVoteImage: {
+    width: 36,
+    height: 36,
+    borderRadius: theme.radius.sm,
+    backgroundColor: theme.colors.border,
+  },
+  mealVoteImagePlaceholder: {
+    width: 36,
+    height: 36,
+    borderRadius: theme.radius.sm,
+    backgroundColor: theme.colors.mint + "18",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  mealVoteInfo: { flex: 1 },
+  mealVoteName: {
+    fontSize: theme.typography.size.sm,
+    fontFamily: theme.typography.fontFamily.semiBold,
+    color: theme.colors.textPrimary,
+  },
+  mealVoteVoters: {
+    fontSize: theme.typography.size.xs,
+    fontFamily: theme.typography.fontFamily.regular,
+    color: theme.colors.textSecondary,
+  },
+  mealVoteCardRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  mealVoteCount: {
+    backgroundColor: theme.colors.mint,
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 4,
+  },
+  mealVoteCountText: {
+    fontSize: 11,
+    fontFamily: theme.typography.fontFamily.bold,
+    color: "#0E0E0E",
+  },
+  voteBtn: {
+    padding: 7,
+    borderRadius: theme.radius.round,
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  voteBtnActive: {
+    backgroundColor: theme.colors.mint,
+    borderColor: theme.colors.mint,
+  },
+  cartBtn: {
+    padding: 7,
+    borderRadius: theme.radius.round,
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+
+  // Modal assigner à…
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    justifyContent: "flex-end",
+  },
+  modalSheet: {
+    backgroundColor: theme.colors.background,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingHorizontal: theme.spacing.lg,
+    paddingBottom: Platform.OS === "ios" ? 36 : 24,
+    paddingTop: theme.spacing.md,
+    gap: 4,
+  },
+  modalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: theme.spacing.sm,
+  },
+  modalTitle: {
+    fontSize: theme.typography.size.lg,
+    fontFamily: theme.typography.fontFamily.bold,
+    color: theme.colors.textPrimary,
+  },
+  modalEmpty: {
+    fontSize: theme.typography.size.sm,
+    color: theme.colors.textSecondary,
+    fontFamily: theme.typography.fontFamily.regular,
+    textAlign: "center",
+    paddingVertical: theme.spacing.md,
+  },
+  memberRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+    gap: 12,
+  },
+  memberAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: theme.colors.purple + "22",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  memberAvatarText: {
+    fontSize: theme.typography.size.md,
+    fontFamily: theme.typography.fontFamily.bold,
+    color: theme.colors.purple,
+  },
+  memberInfo: {
+    flex: 1,
+  },
+  memberName: {
+    fontSize: theme.typography.size.md,
+    fontFamily: theme.typography.fontFamily.semiBold,
+    color: theme.colors.textPrimary,
+  },
+  memberEmail: {
+    fontSize: theme.typography.size.xs,
+    fontFamily: theme.typography.fontFamily.regular,
+    color: theme.colors.textSecondary,
   },
 });
