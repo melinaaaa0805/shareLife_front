@@ -43,6 +43,7 @@ import SpinWheelScreen from "../screens/SpinWheelScreen";
 import TasksScreen from "../screens/TasksScreens";
 import UnassignedTasksScreen from "../screens/UnassignedScreen";
 import WeekTemplateScreen from "../screens/WeekTemplateScreen";
+import FinanceScreen from "../screens/FinanceScreen";
 import { RootStackParamList } from "../types/types";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -156,6 +157,8 @@ function MainTabs() {
               iconName = focused ? "cart" : "cart-outline";
             else if (route.name === "MealPlanner")
               iconName = focused ? "restaurant" : "restaurant-outline";
+            else if (route.name === "Finance")
+              iconName = focused ? "wallet" : "wallet-outline";
             return <Ionicons name={iconName} size={22} color={color} />;
           },
         })}
@@ -179,6 +182,11 @@ function MainTabs() {
           name="ShoppingList"
           component={ShoppingListScreen}
           options={{ tabBarLabel: "Courses" }}
+        />
+        <Tab.Screen
+          name="Finance"
+          component={FinanceScreen}
+          options={{ tabBarLabel: "Finances" }}
         />
       </Tab.Navigator>
     </View>
