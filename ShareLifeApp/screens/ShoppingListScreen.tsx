@@ -19,15 +19,9 @@ import api from "../api/api";
 import { useGroup } from "../context/GroupContext";
 import { useWeek } from "../context/WeekContext";
 import { theme } from "../assets/style/theme";
+import ShoppingItemRow, { ShoppingItem } from "../components/shopping-list/ShoppingItemRow";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-
-type ShoppingItem = {
-  name: string;
-  quantity: string;
-  _done?: boolean; // local only
-  _key: string;   // local key for animations
-};
 
 type ShoppingList = {
   id: string;
@@ -36,101 +30,8 @@ type ShoppingList = {
   items: { name: string; quantity: string }[];
 };
 
-// ─── Utils ────────────────────────────────────────────────────────────────────
-
 function makeKey() {
   return Math.random().toString(36).slice(2);
-}
-
-// ─── Item row ─────────────────────────────────────────────────────────────────
-
-function ItemRow({
-  item,
-  index,
-  onToggle,
-  onDelete,
-}: {
-  item: ShoppingItem;
-  index: number;
-  onToggle: () => void;
-  onDelete: () => void;
-}) {
-  const slideAnim = useRef(new Animated.Value(30)).current;
-  const opacityAnim = useRef(new Animated.Value(0)).current;
-  const deleteScale = useRef(new Animated.Value(1)).current;
-
-  useEffect(() => {
-    Animated.parallel([
-      Animated.spring(slideAnim, {
-        toValue: 0,
-        useNativeDriver: true,
-        tension: 80,
-        friction: 8,
-        delay: index * 40,
-      }),
-      Animated.timing(opacityAnim, {
-        toValue: 1,
-        duration: 280,
-        useNativeDriver: true,
-        delay: index * 40,
-      }),
-    ]).start();
-  }, []);
-
-  const handleDelete = () => {
-    Animated.parallel([
-      Animated.timing(opacityAnim, { toValue: 0, duration: 200, useNativeDriver: true }),
-      Animated.timing(slideAnim, { toValue: -20, duration: 200, useNativeDriver: true }),
-    ]).start(onDelete);
-  };
-
-  return (
-    <Animated.View
-      style={[
-        styles.itemRow,
-        item._done && styles.itemRowDone,
-        { opacity: opacityAnim, transform: [{ translateX: slideAnim }] },
-      ]}
-    >
-      {/* Checkbox */}
-      <TouchableOpacity style={styles.checkboxBtn} onPress={onToggle} activeOpacity={0.7}>
-        <View style={[styles.checkbox, item._done && styles.checkboxChecked]}>
-          {item._done && <Ionicons name="checkmark" size={12} color="#FFF" />}
-        </View>
-      </TouchableOpacity>
-
-      {/* Name */}
-      <Text
-        style={[styles.itemName, item._done && styles.itemNameDone]}
-        numberOfLines={1}
-      >
-        {item.name}
-      </Text>
-
-      {/* Quantity */}
-      <View style={[styles.qtyChip, item._done && styles.qtyChipDone]}>
-        <Text style={[styles.qtyText, item._done && styles.qtyTextDone]}>
-          {item.quantity || "1"}
-        </Text>
-      </View>
-
-      {/* Delete */}
-      <Animated.View style={{ transform: [{ scale: deleteScale }] }}>
-        <Pressable
-          style={styles.deleteBtn}
-          onPress={handleDelete}
-          onPressIn={() =>
-            Animated.spring(deleteScale, { toValue: 0.85, useNativeDriver: true, speed: 60 }).start()
-          }
-          onPressOut={() =>
-            Animated.spring(deleteScale, { toValue: 1, useNativeDriver: true, speed: 40 }).start()
-          }
-        >
-          <Ionicons name="trash-outline" size={15} color={theme.colors.danger} />
-        </Pressable>
-      </Animated.View>
-    </Animated.View>
-  );
 }
 
 // ─── Main screen ──────────────────────────────────────────────────────────────
@@ -194,11 +95,8 @@ export default function ShoppingListScreen() {
     try {
       const res = await api.get(`/shopping-lists/${groupId}`);
       const lists: ShoppingList[] = res.data;
-      console.log("[ShoppingList] listes reçues:", JSON.stringify(lists.map(l => ({ id: l.id, week: l.weekNumber, year: l.year, items: l.items.length }))));
-      console.log("[ShoppingList] cherche semaine:", currentWeek, "année:", year);
       const current = lists.find(l => l.weekNumber === currentWeek && l.year === year)
         ?? lists.find(l => l.weekNumber === currentWeek);
-      console.log("[ShoppingList] liste trouvée:", current ? `id=${current.id}, year=${current.year}, ${current.items.length} items` : "aucune");
       if (current) {
         setListId(current.id);
         setItems(current.items.map(i => ({ ...i, _done: false, _key: makeKey() })));
@@ -361,7 +259,7 @@ export default function ShoppingListScreen() {
           data={items}
           keyExtractor={item => item._key}
           renderItem={({ item, index }) => (
-            <ItemRow
+            <ShoppingItemRow
               item={item}
               index={index}
               onToggle={() => handleToggle(item._key)}

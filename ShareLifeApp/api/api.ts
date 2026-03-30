@@ -27,7 +27,6 @@ api.interceptors.response.use(
   (response) => response,
   async (error) => {
     if (error.response?.status === 401) {
-      console.log("JWT expiré ou invalide → déconnexion");
       if (logoutHandler) logoutHandler();
       Alert.alert("Session expirée", "Veuillez vous reconnecter");
     }

@@ -19,6 +19,7 @@ import { theme } from "../assets/style/theme";
 import { useGroup } from "../context/GroupContext";
 import { useWeek } from "../context/WeekContext";
 import { RootStackParamList } from "../types/types";
+import { parseDateStr, toLocalDateStr, DAYS_FR_SHORT, DAYS_FR_FULL } from "../utils/date";
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -35,8 +36,7 @@ type Task = {
   completedAt?: string | null;
 };
 
-const DAYS_FR = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
-const DAYS_FR_FULL = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
+const DAYS_FR = DAYS_FR_SHORT;
 
 if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -284,17 +284,6 @@ export default function CalendarScreen() {
 }
 
 // ---- Utils ----
-
-/** Formate une Date locale en YYYY-MM-DD sans passer par UTC */
-function toLocalDateStr(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
-/** Parse un YYYY-MM-DD en Date locale (évite le décalage UTC de new Date("YYYY-MM-DD")) */
-function parseDateStr(s: string): Date {
-  const [y, m, d] = s.split("-").map(Number);
-  return new Date(y, m - 1, d);
-}
 
 function getWeekDatesFromISO(year: number, week: number): string[] {
   const d = new Date(year, 0, 4);

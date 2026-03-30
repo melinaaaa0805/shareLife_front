@@ -296,14 +296,10 @@ export default function AddTaskScreen() {
 
     setLoading(true);
     setError(null);
-    console.log('[AddTask] payload:', JSON.stringify(payload));
     try {
       await api.post(`/tasks/group/${idGroup}`, payload);
       navigation.goBack();
     } catch (e: any) {
-      console.log('[AddTask] error status:', e.response?.status);
-      console.log('[AddTask] error data:', JSON.stringify(e.response?.data));
-      console.log('[AddTask] error message:', e.message);
       const msg = e.response?.data?.message;
       setError(Array.isArray(msg) ? msg.join(', ') : (msg ?? "Impossible de créer la tâche."));
       shake();
