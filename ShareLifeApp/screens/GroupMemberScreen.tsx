@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useCallback } from "react";
+﻿import React, { useEffect, useState, useRef, useCallback } from "react";
 import {
   View,
   Text,
@@ -12,8 +12,6 @@ import { Ionicons } from "@expo/vector-icons";
 import api from "../api/api";
 import { useAuth } from "../context/AuthContext";
 import { theme } from "../assets/style/theme";
-
-// ─── Types ────────────────────────────────────────────────────────────────────
 
 type Member = {
   id: string;
@@ -53,8 +51,6 @@ function getISOWeekAndYear(d: Date) {
   return { week, year: date.getFullYear() };
 }
 
-// ─── Animated progress bar ────────────────────────────────────────────────────
-
 function ProgressBar({ value, color, delay }: { value: number; color: string; delay: number }) {
   const anim = useRef(new Animated.Value(0)).current;
   useEffect(() => {
@@ -79,8 +75,6 @@ const barStyles = StyleSheet.create({
   bg: { height: 5, backgroundColor: theme.colors.border, borderRadius: 3, overflow: "hidden", flex: 1 },
   fill: { height: "100%", borderRadius: 3 },
 });
-
-// ─── Member card ──────────────────────────────────────────────────────────────
 
 function MemberCard({
   stats,
@@ -133,7 +127,6 @@ function MemberCard({
     <Animated.View style={[styles.card, { opacity: opacityAnim, transform: [{ translateY: slideAnim }] }]}>
       <TouchableOpacity onPress={onToggle} activeOpacity={0.8}>
         <View style={styles.cardTop}>
-          {/* Avatar */}
           <View style={[styles.avatar, { backgroundColor: color + "25", borderColor: color + "60" }]}>
             <Text style={[styles.avatarText, { color }]}>{initials}</Text>
             {isMe && (
@@ -142,8 +135,6 @@ function MemberCard({
               </View>
             )}
           </View>
-
-          {/* Info */}
           <View style={styles.memberInfo}>
             <View style={styles.memberNameRow}>
               <Text style={styles.memberName}>{member.firstName || member.email}</Text>
@@ -151,24 +142,17 @@ function MemberCard({
                 <Ionicons name="chevron-down" size={16} color={theme.colors.textSecondary} />
               </Animated.View>
             </View>
-
-            {/* Task count + progress */}
             <View style={styles.progressRow}>
               <ProgressBar value={pct} color={color} delay={200 + index * 80} />
               <Text style={styles.progressLabel}>{doneCount}/{tasks.length}</Text>
             </View>
-
-            {/* Stats row */}
             <View style={styles.statsChips}>
-              {/* Mental load */}
               <View style={[styles.loadChip, { backgroundColor: loadColor + "20", borderColor: loadColor + "50" }]}>
                 <Ionicons name="barbell-outline" size={10} color={loadColor} />
                 <Text style={[styles.loadText, { color: loadColor }]}>
                   {tasks.length > 0 ? `${loadLabel} (${avgWeight.toFixed(1)})` : "Aucune tâche"}
                 </Text>
               </View>
-
-              {/* Task count */}
               <View style={styles.chip}>
                 <Ionicons name="list-outline" size={10} color={theme.colors.textSecondary} />
                 <Text style={styles.chipText}>{tasks.length} tâche{tasks.length > 1 ? "s" : ""}</Text>
@@ -177,8 +161,6 @@ function MemberCard({
           </View>
         </View>
       </TouchableOpacity>
-
-      {/* Expanded task list */}
       <Animated.View style={{ maxHeight: maxExpandHeight, overflow: "hidden" }}>
         <View style={styles.taskList}>
           {tasks.length === 0 ? (
@@ -209,8 +191,6 @@ function MemberCard({
     </Animated.View>
   );
 }
-
-// ─── Main ─────────────────────────────────────────────────────────────────────
 
 export default function GroupMembersScreen() {
   const route = useRoute<RouteProps>();
@@ -289,7 +269,6 @@ export default function GroupMembersScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Header */}
       <Animated.View style={[styles.header, { opacity: headerAnim }]}>
         <View>
           <Text style={styles.headerTitle}>Membres</Text>
@@ -300,8 +279,6 @@ export default function GroupMembersScreen() {
           <Text style={styles.memberCountText}>{memberStats.length}</Text>
         </View>
       </Animated.View>
-
-      {/* Summary */}
       <Animated.View style={[styles.summaryCard, { opacity: headerAnim }]}>
         <View style={styles.summaryItem}>
           <Text style={[styles.summaryValue, { color: theme.colors.purple }]}>{totalTasks}</Text>
@@ -320,8 +297,6 @@ export default function GroupMembersScreen() {
           <Text style={styles.summaryLabel}>progression</Text>
         </View>
       </Animated.View>
-
-      {/* Member cards */}
       <ScrollView contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>
         {memberStats.map((stats, i) => (
           <MemberCard
@@ -337,8 +312,6 @@ export default function GroupMembersScreen() {
     </View>
   );
 }
-
-// ─── Styles ───────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.background },

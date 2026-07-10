@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+﻿import React, { useEffect, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -9,14 +9,16 @@ import {
   Platform,
   ActivityIndicator,
   Alert,
+  Modal,
+  TextInput,
+  KeyboardAvoidingView,
+  Pressable,
 } from "react-native";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import api from "../api/api";
 import { theme } from "../assets/style/theme";
 import { GroupMember, MemberProfile, TaskType } from "../types/types";
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function getISOWeek(d: Date): { week: number; year: number } {
   const date = new Date(d.getTime());
@@ -35,12 +37,12 @@ function getISOWeek(d: Date): { week: number; year: number } {
 const DAYS_FR = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
 
 const TASK_TYPE_META: Record<TaskType, { emoji: string; label: string; color: string }> = {
-  FAMILY:      { emoji: "👨‍👩‍👧‍👦", label: "Famille",       color: theme.colors.mint },
-  ADULT:       { emoji: "🧑",        label: "Adulte",         color: theme.colors.purple },
-  ADULT_CHILD: { emoji: "🤝",        label: "Adulte & Enfant", color: theme.colors.yellow },
+  FAMILY:      { emoji: "👨‍👩‍👧‍👦", label: "Famille",         color: theme.colors.mint },
+  ADULT:       { emoji: "🧑",        label: "Adulte",           color: theme.colors.purple },
+  ADULT_CHILD: { emoji: "🤝",        label: "Adulte & Enfant",  color: theme.colors.yellow },
 };
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+const TASK_TYPES: TaskType[] = ["FAMILY", "ADULT", "ADULT_CHILD"];
 
 interface UnassignedTask {
   id: string;
@@ -56,7 +58,153 @@ interface MemberWithProfile extends GroupMember {
   profile: MemberProfile;
 }
 
-// ─── Screen ───────────────────────────────────────────────────────────────────
+interface TaskForm {
+  title: string;
+  description: string;
+  weight: string;
+  duration: string;
+  dayOfWeek: number;
+  taskType: TaskType;
+}
+
+const EMPTY_FORM: TaskForm = {
+  title: "",
+  description: "",
+  weight: "1",
+  duration: "",
+  dayOfWeek: 0,
+  taskType: "FAMILY",
+};
+
+function TaskFormModal({
+  visible,
+  initial,
+  onClose,
+  onSave,
+}: {
+  visible: boolean;
+  initial: TaskForm;
+  onClose: () => void;
+  onSave: (form: TaskForm) => void;
+}) {
+  const [form, setForm] = useState<TaskForm>(initial);
+
+  useEffect(() => { setForm(initial); }, [visible]);
+
+  const set = (key: keyof TaskForm, val: any) =>
+    setForm(prev => ({ ...prev, [key]: val }));
+
+  const handleSave = () => {
+    if (!form.title.trim()) {
+      Alert.alert("Champ requis", "Le titre est obligatoire.");
+      return;
+    }
+    onSave(form);
+  };
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <KeyboardAvoidingView
+        style={styles.modalOverlay}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
+        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
+        <View style={styles.modalSheet}>
+          <View style={styles.modalHandle} />
+
+          <Text style={styles.modalTitle}>
+            {initial.title ? "Modifier la tâche" : "Nouvelle tâche"}
+          </Text>
+          <Text style={styles.fieldLabel}>Titre *</Text>
+          <TextInput
+            style={styles.input}
+            value={form.title}
+            onChangeText={v => set("title", v)}
+            placeholder="Ex : Faire la vaisselle"
+            placeholderTextColor={theme.colors.textSecondary}
+          />
+          <Text style={styles.fieldLabel}>Description</Text>
+          <TextInput
+            style={[styles.input, styles.inputMultiline]}
+            value={form.description}
+            onChangeText={v => set("description", v)}
+            placeholder="Optionnel"
+            placeholderTextColor={theme.colors.textSecondary}
+            multiline
+            numberOfLines={3}
+          />
+          <View style={styles.rowFields}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.fieldLabel}>Poids (1-5)</Text>
+              <TextInput
+                style={styles.input}
+                value={form.weight}
+                onChangeText={v => set("weight", v.replace(/[^0-9]/g, ""))}
+                keyboardType="numeric"
+                placeholder="1"
+                placeholderTextColor={theme.colors.textSecondary}
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.fieldLabel}>Durée (min)</Text>
+              <TextInput
+                style={styles.input}
+                value={form.duration}
+                onChangeText={v => set("duration", v.replace(/[^0-9]/g, ""))}
+                keyboardType="numeric"
+                placeholder="30"
+                placeholderTextColor={theme.colors.textSecondary}
+              />
+            </View>
+          </View>
+          <Text style={styles.fieldLabel}>Jour</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 14 }}>
+            <View style={styles.pillRow}>
+              {DAYS_FR.map((d, i) => (
+                <TouchableOpacity
+                  key={i}
+                  style={[styles.pill, form.dayOfWeek === i && styles.pillActive]}
+                  onPress={() => set("dayOfWeek", i)}
+                >
+                  <Text style={[styles.pillText, form.dayOfWeek === i && styles.pillTextActive]}>
+                    {d}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </ScrollView>
+          <Text style={styles.fieldLabel}>Type</Text>
+          <View style={styles.pillRow}>
+            {TASK_TYPES.map(t => {
+              const meta = TASK_TYPE_META[t];
+              const active = form.taskType === t;
+              return (
+                <TouchableOpacity
+                  key={t}
+                  style={[styles.typePill, active && { borderColor: meta.color, backgroundColor: meta.color + "18" }]}
+                  onPress={() => set("taskType", t)}
+                >
+                  <Text style={styles.typePillEmoji}>{meta.emoji}</Text>
+                  <Text style={[styles.typePillText, active && { color: meta.color }]}>
+                    {meta.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+          <View style={styles.modalActions}>
+            <TouchableOpacity style={styles.cancelBtn} onPress={onClose}>
+              <Text style={styles.cancelBtnText}>Annuler</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.saveBtn} onPress={handleSave}>
+              <Text style={styles.saveBtnText}>Enregistrer</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </KeyboardAvoidingView>
+    </Modal>
+  );
+}
 
 export default function SmartAssignScreen() {
   const route = useRoute<any>();
@@ -71,6 +219,11 @@ export default function SmartAssignScreen() {
   const [assigning, setAssigning] = useState(false);
   const [done, setDone] = useState(false);
   const [assignedCount, setAssignedCount] = useState(0);
+
+  // Modal state
+  const [modalVisible, setModalVisible] = useState(false);
+  const [editingTask, setEditingTask] = useState<UnassignedTask | null>(null);
+  const [savingTask, setSavingTask] = useState(false);
 
   const headerAnim = useRef(new Animated.Value(0)).current;
   const cardAnim = useRef(new Animated.Value(30)).current;
@@ -91,13 +244,12 @@ export default function SmartAssignScreen() {
         api.get(`/group-member/${groupId}`),
         api.get(`/task-assignment/unassigned/${groupId}`),
       ]);
-      const membersData: MemberWithProfile[] = (membersRes.data ?? []).map((m: any) => ({
+      setMembers((membersRes.data ?? []).map((m: any) => ({
         id: m.id,
         firstName: m.firstName,
         email: m.email,
         profile: m.profile ?? "ADULT",
-      }));
-      setMembers(membersData);
+      })));
       setUnassigned(unassignedRes.data ?? []);
     } catch {
       Alert.alert("Erreur", "Impossible de charger les données.");
@@ -105,6 +257,94 @@ export default function SmartAssignScreen() {
       setLoading(false);
     }
   };
+
+
+  const openAdd = () => {
+    setEditingTask(null);
+    setModalVisible(true);
+  };
+
+  const openEdit = (task: UnassignedTask) => {
+    setEditingTask(task);
+    setModalVisible(true);
+  };
+
+  const handleSave = async (form: TaskForm) => {
+    setSavingTask(true);
+    try {
+      if (editingTask) {
+        // PATCH existing
+        const res = await api.patch(`/tasks/${editingTask.id}`, {
+          title: form.title.trim(),
+          description: form.description.trim() || undefined,
+          weight: form.weight ? parseInt(form.weight, 10) : 1,
+          duration: form.duration ? parseInt(form.duration, 10) : undefined,
+          dayOfWeek: form.dayOfWeek,
+          taskType: form.taskType,
+        });
+        setUnassigned(prev => prev.map(t => t.id === editingTask.id ? {
+          ...t,
+          title: res.data.title,
+          description: res.data.description,
+          weight: res.data.weight,
+          duration: res.data.duration,
+          dayOfWeek: res.data.dayOfWeek,
+          taskType: res.data.taskType,
+        } : t));
+      } else {
+        // POST new
+        const res = await api.post(`/tasks/group/${groupId}`, {
+          title: form.title.trim(),
+          description: form.description.trim() || undefined,
+          weight: form.weight ? parseInt(form.weight, 10) : 1,
+          duration: form.duration ? parseInt(form.duration, 10) : undefined,
+          dayOfWeek: form.dayOfWeek,
+          taskType: form.taskType,
+          frequency: "ONCE",
+          weekNumber: currentWeek,
+          year: currentYear,
+          date: getDateForDayOfWeek(form.dayOfWeek, currentWeek, currentYear),
+        });
+        setUnassigned(prev => [...prev, {
+          id: res.data.id,
+          title: res.data.title,
+          description: res.data.description,
+          weight: res.data.weight,
+          duration: res.data.duration,
+          dayOfWeek: res.data.dayOfWeek,
+          taskType: res.data.taskType,
+        }]);
+      }
+      setModalVisible(false);
+    } catch {
+      Alert.alert("Erreur", "Impossible de sauvegarder la tâche.");
+    } finally {
+      setSavingTask(false);
+    }
+  };
+
+  const handleDelete = (task: UnassignedTask) => {
+    Alert.alert(
+      "Supprimer la tâche",
+      `Supprimer "${task.title}" ?`,
+      [
+        { text: "Annuler", style: "cancel" },
+        {
+          text: "Supprimer",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await api.delete(`/tasks/${task.id}`);
+              setUnassigned(prev => prev.filter(t => t.id !== task.id));
+            } catch {
+              Alert.alert("Erreur", "Impossible de supprimer la tâche.");
+            }
+          },
+        },
+      ]
+    );
+  };
+
 
   const handleAssign = async () => {
     if (unassigned.length === 0) {
@@ -117,8 +357,7 @@ export default function SmartAssignScreen() {
         weekNumber: currentWeek,
         year: currentYear,
       });
-      const count: number = res.data?.assigned ?? 0;
-      setAssignedCount(count);
+      setAssignedCount(res.data?.assigned ?? 0);
       setDone(true);
       Animated.spring(successScale, { toValue: 1, tension: 60, friction: 8, useNativeDriver: true }).start();
     } catch {
@@ -128,12 +367,20 @@ export default function SmartAssignScreen() {
     }
   };
 
-  const adultsCount = members.filter((m) => m.profile === "ADULT").length;
-  const childrenCount = members.filter((m) => m.profile === "CHILD").length;
 
-  const familyTasks = unassigned.filter((t) => !t.taskType || t.taskType === "FAMILY").length;
-  const adultTasks = unassigned.filter((t) => t.taskType === "ADULT").length;
-  const adultChildTasks = unassigned.filter((t) => t.taskType === "ADULT_CHILD").length;
+  const adultsCount   = members.filter(m => m.profile === "ADULT").length;
+  const childrenCount = members.filter(m => m.profile === "CHILD").length;
+
+  const initialForm: TaskForm = editingTask
+    ? {
+        title: editingTask.title,
+        description: editingTask.description ?? "",
+        weight: String(editingTask.weight ?? 1),
+        duration: editingTask.duration != null ? String(editingTask.duration) : "",
+        dayOfWeek: editingTask.dayOfWeek ?? 0,
+        taskType: editingTask.taskType ?? "FAMILY",
+      }
+    : EMPTY_FORM;
 
   if (loading) {
     return (
@@ -146,16 +393,12 @@ export default function SmartAssignScreen() {
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-
-        {/* Header */}
         <Animated.View style={[styles.header, { opacity: headerAnim }]}>
           <Text style={styles.screenTitle}>Répartition intelligente</Text>
           <Text style={styles.screenSub}>Semaine {currentWeek} · {currentYear}</Text>
         </Animated.View>
 
         <Animated.View style={{ transform: [{ translateY: cardAnim }] }}>
-
-          {/* Résumé membres */}
           <View style={styles.card}>
             <Text style={styles.cardTitle}>
               <Ionicons name="people-outline" size={14} color={theme.colors.purple} /> Membres du groupe
@@ -173,7 +416,7 @@ export default function SmartAssignScreen() {
                 <Text style={styles.profileStatLabel}>Enfant{childrenCount > 1 ? "s" : ""}</Text>
               </View>
             </View>
-            {members.map((m) => (
+            {members.map(m => (
               <View key={m.id} style={styles.memberRow}>
                 <View style={styles.memberAvatar}>
                   <Text style={styles.memberAvatarText}>{m.firstName[0].toUpperCase()}</Text>
@@ -187,57 +430,61 @@ export default function SmartAssignScreen() {
               </View>
             ))}
           </View>
-
-          {/* Résumé tâches */}
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>
-              <Ionicons name="list-outline" size={14} color={theme.colors.purple} /> Tâches à assigner ({unassigned.length})
-            </Text>
-            <View style={styles.taskTypeSummary}>
-              {[
-                { count: familyTasks,     type: "FAMILY" as TaskType },
-                { count: adultTasks,      type: "ADULT" as TaskType },
-                { count: adultChildTasks, type: "ADULT_CHILD" as TaskType },
-              ].map(({ count, type }) => {
-                const meta = TASK_TYPE_META[type];
-                return (
-                  <View key={type} style={styles.taskTypeStat}>
-                    <Text style={styles.taskTypeEmoji}>{meta.emoji}</Text>
-                    <Text style={[styles.taskTypeCount, { color: meta.color }]}>{count}</Text>
-                    <Text style={styles.taskTypeLabel}>{meta.label}</Text>
-                  </View>
-                );
-              })}
+            <View style={styles.cardTitleRow}>
+              <Text style={styles.cardTitle}>
+                <Ionicons name="list-outline" size={14} color={theme.colors.purple} />{" "}
+                Tâches à assigner ({unassigned.length})
+              </Text>
+              <TouchableOpacity style={styles.addTaskBtn} onPress={openAdd}>
+                <Ionicons name="add" size={16} color={theme.colors.purple} />
+                <Text style={styles.addTaskBtnText}>Ajouter</Text>
+              </TouchableOpacity>
             </View>
 
-            {unassigned.slice(0, 8).map((task) => {
-              const meta = TASK_TYPE_META[task.taskType ?? "FAMILY"];
-              return (
-                <View key={task.id} style={styles.taskRow}>
-                  <Text style={styles.taskTypeTagEmoji}>{meta.emoji}</Text>
-                  <View style={styles.taskInfo}>
-                    <Text style={styles.taskTitle} numberOfLines={1}>{task.title}</Text>
-                    <View style={styles.taskMeta}>
-                      {task.dayOfWeek != null && (
-                        <Text style={styles.taskMetaText}>{DAYS_FR[task.dayOfWeek]}</Text>
-                      )}
-                      {task.weight != null && (
-                        <Text style={styles.taskMetaText}>⚖️ {task.weight}</Text>
-                      )}
-                      {task.duration != null && (
-                        <Text style={styles.taskMetaText}>⏱ {task.duration} min</Text>
-                      )}
+            {unassigned.length === 0 ? (
+              <Text style={styles.emptyText}>Aucune tâche non assignée cette semaine.</Text>
+            ) : (
+              unassigned.map(task => {
+                const meta = TASK_TYPE_META[task.taskType ?? "FAMILY"];
+                return (
+                  <View key={task.id} style={styles.taskRow}>
+                    <Text style={styles.taskTypeTagEmoji}>{meta.emoji}</Text>
+                    <View style={styles.taskInfo}>
+                      <Text style={styles.taskTitle} numberOfLines={1}>{task.title}</Text>
+                      <View style={styles.taskMeta}>
+                        {task.dayOfWeek != null && (
+                          <Text style={styles.taskMetaText}>{DAYS_FR[task.dayOfWeek]}</Text>
+                        )}
+                        {task.weight != null && (
+                          <Text style={styles.taskMetaText}>⚖️ {task.weight}</Text>
+                        )}
+                        {task.duration != null && (
+                          <Text style={styles.taskMetaText}>⏱ {task.duration} min</Text>
+                        )}
+                      </View>
+                    </View>
+                    <View style={styles.taskActions}>
+                      <TouchableOpacity
+                        style={styles.taskActionBtn}
+                        onPress={() => openEdit(task)}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      >
+                        <Ionicons name="pencil-outline" size={15} color={theme.colors.purple} />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.taskActionBtn}
+                        onPress={() => handleDelete(task)}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      >
+                        <Ionicons name="trash-outline" size={15} color={theme.colors.danger} />
+                      </TouchableOpacity>
                     </View>
                   </View>
-                </View>
-              );
-            })}
-            {unassigned.length > 8 && (
-              <Text style={styles.moreText}>+ {unassigned.length - 8} autres tâches…</Text>
+                );
+              })
             )}
           </View>
-
-          {/* Algo explication */}
           <View style={styles.algoBox}>
             <Ionicons name="flash-outline" size={16} color={theme.colors.yellow} />
             <View style={styles.algoText}>
@@ -251,8 +498,6 @@ export default function SmartAssignScreen() {
               </Text>
             </View>
           </View>
-
-          {/* Succès */}
           {done && (
             <Animated.View style={[styles.successCard, { transform: [{ scale: successScale }] }]}>
               <Ionicons name="checkmark-circle" size={48} color={theme.colors.mint} />
@@ -260,10 +505,7 @@ export default function SmartAssignScreen() {
               <Text style={styles.successSub}>
                 {assignedCount} tâche{assignedCount > 1 ? "s" : ""} attribuée{assignedCount > 1 ? "s" : ""} équitablement.
               </Text>
-              <TouchableOpacity
-                style={styles.backBtn}
-                onPress={() => navigation.goBack()}
-              >
+              <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
                 <Text style={styles.backBtnText}>Retour au groupe</Text>
               </TouchableOpacity>
             </Animated.View>
@@ -276,7 +518,7 @@ export default function SmartAssignScreen() {
       {!done && (
         <View style={styles.footer}>
           <TouchableOpacity
-            style={[styles.assignBtn, assigning && styles.assignBtnDisabled]}
+            style={[styles.assignBtn, (assigning || unassigned.length === 0) && styles.assignBtnDisabled]}
             onPress={handleAssign}
             disabled={assigning || unassigned.length === 0}
             activeOpacity={0.85}
@@ -294,8 +536,25 @@ export default function SmartAssignScreen() {
           </TouchableOpacity>
         </View>
       )}
+
+      <TaskFormModal
+        visible={modalVisible}
+        initial={initialForm}
+        onClose={() => setModalVisible(false)}
+        onSave={handleSave}
+      />
     </View>
   );
+}
+
+function getDateForDayOfWeek(dayOfWeek: number, week: number, year: number): string {
+  const jan4 = new Date(year, 0, 4);
+  const dayOfJan4 = (jan4.getDay() + 6) % 7;
+  const monday = new Date(jan4);
+  monday.setDate(jan4.getDate() - dayOfJan4 + (week - 1) * 7);
+  const target = new Date(monday);
+  target.setDate(monday.getDate() + dayOfWeek);
+  return target.toISOString().split("T")[0];
 }
 
 const styles = StyleSheet.create({
@@ -332,6 +591,35 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
     letterSpacing: 0.6,
   },
+  cardTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  addTaskBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: theme.colors.purple + "15",
+    borderRadius: theme.radius.round,
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderWidth: 1,
+    borderColor: theme.colors.purple + "40",
+  },
+  addTaskBtnText: {
+    fontSize: 12,
+    fontFamily: theme.typography.fontFamily.semiBold,
+    color: theme.colors.purple,
+  },
+
+  emptyText: {
+    fontSize: theme.typography.size.sm,
+    fontFamily: theme.typography.fontFamily.regular,
+    color: theme.colors.textSecondary,
+    textAlign: "center",
+    paddingVertical: 12,
+  },
 
   profileSummaryRow: {
     flexDirection: "row",
@@ -352,11 +640,7 @@ const styles = StyleSheet.create({
     fontFamily: theme.typography.fontFamily.regular,
     color: theme.colors.textSecondary,
   },
-  profileStatDivider: {
-    width: 1,
-    height: 40,
-    backgroundColor: theme.colors.border,
-  },
+  profileStatDivider: { width: 1, height: 40, backgroundColor: theme.colors.border },
 
   memberRow: {
     flexDirection: "row",
@@ -367,12 +651,9 @@ const styles = StyleSheet.create({
     borderBottomColor: theme.colors.border,
   },
   memberAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 32, height: 32, borderRadius: 16,
     backgroundColor: theme.colors.purple + "22",
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: "center", justifyContent: "center",
   },
   memberAvatarText: {
     fontSize: theme.typography.size.sm,
@@ -403,31 +684,11 @@ const styles = StyleSheet.create({
     color: theme.colors.textPrimary,
   },
 
-  taskTypeSummary: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
-  },
-  taskTypeStat: { alignItems: "center", gap: 4 },
-  taskTypeEmoji: { fontSize: 22 },
-  taskTypeCount: {
-    fontSize: theme.typography.size.lg,
-    fontFamily: theme.typography.fontFamily.bold,
-  },
-  taskTypeLabel: {
-    fontSize: 10,
-    fontFamily: theme.typography.fontFamily.regular,
-    color: theme.colors.textSecondary,
-    textAlign: "center",
-  },
-
   taskRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    paddingVertical: 6,
+    paddingVertical: 8,
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border,
   },
@@ -444,12 +705,13 @@ const styles = StyleSheet.create({
     fontFamily: theme.typography.fontFamily.regular,
     color: theme.colors.textSecondary,
   },
-  moreText: {
-    fontSize: theme.typography.size.xs,
-    fontFamily: theme.typography.fontFamily.regular,
-    color: theme.colors.textSecondary,
-    textAlign: "center",
-    paddingTop: 4,
+  taskActions: { flexDirection: "row", gap: 6 },
+  taskActionBtn: {
+    width: 30, height: 30, borderRadius: 15,
+    alignItems: "center", justifyContent: "center",
+    backgroundColor: theme.colors.background,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
   },
 
   algoBox: {
@@ -513,9 +775,7 @@ const styles = StyleSheet.create({
 
   footer: {
     position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
+    bottom: 0, left: 0, right: 0,
     padding: theme.spacing.lg,
     paddingBottom: Platform.OS === "ios" ? 36 : 24,
     backgroundColor: theme.colors.background,
@@ -541,5 +801,123 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.size.md,
     fontFamily: theme.typography.fontFamily.bold,
     color: "#0E0E0E",
+  },
+
+  modalOverlay: {
+    flex: 1,
+    justifyContent: "flex-end",
+    backgroundColor: "rgba(0,0,0,0.45)",
+  },
+  modalSheet: {
+    backgroundColor: theme.colors.surface,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: theme.spacing.lg,
+    paddingBottom: Platform.OS === "ios" ? 40 : 24,
+    gap: 0,
+  },
+  modalHandle: {
+    width: 40, height: 4,
+    borderRadius: 2,
+    backgroundColor: theme.colors.border,
+    alignSelf: "center",
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: theme.typography.size.lg,
+    fontFamily: theme.typography.fontFamily.bold,
+    color: theme.colors.textPrimary,
+    marginBottom: 16,
+  },
+  fieldLabel: {
+    fontSize: 12,
+    fontFamily: theme.typography.fontFamily.semiBold,
+    color: theme.colors.textSecondary,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    marginBottom: 6,
+  },
+  input: {
+    backgroundColor: theme.colors.background,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.sm,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: theme.typography.size.sm,
+    fontFamily: theme.typography.fontFamily.regular,
+    color: theme.colors.textPrimary,
+    marginBottom: 14,
+  },
+  inputMultiline: {
+    height: 72,
+    textAlignVertical: "top",
+  },
+  rowFields: { flexDirection: "row", gap: 12 },
+  pillRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 14 },
+  pill: {
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+    borderRadius: theme.radius.round,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.background,
+  },
+  pillActive: {
+    borderColor: theme.colors.purple,
+    backgroundColor: theme.colors.purple + "18",
+  },
+  pillText: {
+    fontSize: 12,
+    fontFamily: theme.typography.fontFamily.medium,
+    color: theme.colors.textSecondary,
+  },
+  pillTextActive: { color: theme.colors.purple },
+  typePill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: theme.radius.round,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.background,
+  },
+  typePillEmoji: { fontSize: 14 },
+  typePillText: {
+    fontSize: 12,
+    fontFamily: theme.typography.fontFamily.medium,
+    color: theme.colors.textSecondary,
+  },
+  modalActions: {
+    flexDirection: "row",
+    gap: 12,
+    marginTop: 4,
+  },
+  cancelBtn: {
+    flex: 1,
+    paddingVertical: 13,
+    borderRadius: theme.radius.round,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    alignItems: "center",
+  },
+  cancelBtnText: {
+    fontSize: theme.typography.size.sm,
+    fontFamily: theme.typography.fontFamily.semiBold,
+    color: theme.colors.textSecondary,
+  },
+  saveBtn: {
+    flex: 1,
+    paddingVertical: 13,
+    borderRadius: theme.radius.round,
+    backgroundColor: theme.colors.purple,
+    alignItems: "center",
+  },
+  saveBtnText: {
+    fontSize: theme.typography.size.sm,
+    fontFamily: theme.typography.fontFamily.semiBold,
+    color: "#FFF",
   },
 });

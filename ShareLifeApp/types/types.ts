@@ -99,7 +99,61 @@ export interface ShoppingList {
   items: ShoppingItem[];
 }
 
-// ─── Finance ──────────────────────────────────────────────────────────────────
+export type InsightType =
+  | 'OVERLOAD_WARNING'
+  | 'REBALANCE_SUGGESTION'
+  | 'WEEKLY_SUMMARY'
+  | 'LATE_TASKS'
+  | 'TEMPLATE_SUGGESTION';
+
+export type InsightSeverity = 'warning' | 'info' | 'success';
+
+export interface InsightAction {
+  label: string;
+  type: 'NAVIGATE_SMART_ASSIGN' | 'NAVIGATE_WEEK_TEMPLATE' | 'NAVIGATE_DAY';
+  payload?: Record<string, unknown>;
+}
+
+export interface Insight {
+  id: string;
+  type: InsightType;
+  severity: InsightSeverity;
+  icon: string;
+  title: string;
+  body: string;
+  action?: InsightAction;
+}
+
+export type RewardAssignee = 'WINNER' | 'LOSER';
+export type ScorePeriod = 'weekly' | 'monthly';
+
+export interface LeaderboardEntry {
+  userId: string;
+  firstName: string;
+  email: string;
+  score: number;
+  rank: number;
+}
+
+export interface Reward {
+  id: string;
+  title: string;
+  description: string | null;
+  assignedTo: RewardAssignee;
+  isActive: boolean;
+  createdAt: string;
+  createdBy: { id: string; firstName: string; email: string } | null;
+}
+
+export interface LeaderboardResult {
+  period: ScorePeriod;
+  week?: number;
+  month?: number;
+  year: number;
+  entries: LeaderboardEntry[];
+  winnerReward: Reward | null;
+  loserReward: Reward | null;
+}
 
 export type ExpenseCategory =
   | 'FOOD'
@@ -162,6 +216,31 @@ export interface BalanceResponse {
   simplifiedDebts: DebtEdge[];
 }
 
+export interface TimerInfo {
+  taskId: string;
+  isRunning: boolean;
+  runningTimerId: string | null;
+  runningStartedAt: string | null;
+  totalSeconds: number;
+  sessions: number;
+}
+
+export interface Badge {
+  id: string;
+  label: string;
+  icon: string;
+  description: string;
+  earned: boolean;
+}
+
+export interface GamificationProfile {
+  streak: number;
+  bestStreak: number;
+  badges: Badge[];
+  totalTasksDone: number;
+  totalTimeSeconds: number;
+}
+
 export type RootStackParamList = {
   Home: undefined;
   Login: undefined;
@@ -187,4 +266,5 @@ export type RootStackParamList = {
   SmartAssign: { groupId: string };
   SpinWheel: { groupId: string; members: GroupMember[] };
   ForgotPassword: undefined;
+  Invitations: undefined;
 };

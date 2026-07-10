@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+﻿import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   View,
   Text,
@@ -21,8 +21,6 @@ import { useWeek } from "../context/WeekContext";
 import { theme } from "../assets/style/theme";
 import ShoppingItemRow, { ShoppingItem } from "../components/shopping-list/ShoppingItemRow";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
 type ShoppingList = {
   id: string;
   weekNumber: number;
@@ -33,8 +31,6 @@ type ShoppingList = {
 function makeKey() {
   return Math.random().toString(36).slice(2);
 }
-
-// ─── Main screen ──────────────────────────────────────────────────────────────
 
 export default function ShoppingListScreen() {
   const { currentGroup } = useGroup();
@@ -197,7 +193,6 @@ export default function ShoppingListScreen() {
       behavior={Platform.OS === "ios" ? "padding" : undefined}
       keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
     >
-      {/* ── Header ── */}
       <Animated.View style={[styles.header, { opacity: headerAnim }]}>
         <View style={styles.headerLeft}>
           <Text style={styles.title}>Liste de courses</Text>
@@ -209,8 +204,6 @@ export default function ShoppingListScreen() {
           </View>
         )}
       </Animated.View>
-
-      {/* ── Week nav ── */}
       <View style={styles.weekNav}>
         <TouchableOpacity style={styles.weekNavArrow} onPress={goToPrevWeek}>
           <Ionicons name="chevron-back" size={18} color={theme.colors.purple} />
@@ -227,8 +220,6 @@ export default function ShoppingListScreen() {
           <Ionicons name="chevron-forward" size={18} color={theme.colors.purple} />
         </TouchableOpacity>
       </View>
-
-      {/* ── Stats bar ── */}
       {!loading && (
         <Animated.View style={[styles.statsBar, { opacity: statsAnim }]}>
           <View style={styles.statsLeft}>
@@ -247,8 +238,6 @@ export default function ShoppingListScreen() {
           </View>
         </Animated.View>
       )}
-
-      {/* ── List ── */}
       {loading ? (
         <View style={styles.loadingState}>
           <Ionicons name="cart-outline" size={40} color={theme.colors.textSecondary} />
@@ -291,11 +280,7 @@ export default function ShoppingListScreen() {
           }
         />
       )}
-
-      {/* ── Input footer ── */}
       <Animated.View style={[styles.inputFooter, { transform: [{ translateY: inputSlide }] }]}>
-
-        {/* Suggestions d'articles habituels */}
         {suggestions.length > 0 && (
           <View style={styles.suggestionsSection}>
             <View style={styles.suggestionsHeader}>
@@ -322,8 +307,6 @@ export default function ShoppingListScreen() {
             </ScrollView>
           </View>
         )}
-
-        {/* Ligne principale : input + quantité + bouton */}
         <View style={styles.inputRow}>
           <View style={[styles.nameInputWrap, nameFocused && styles.nameInputFocused]}>
             <TextInput
@@ -338,7 +321,6 @@ export default function ShoppingListScreen() {
               onFocus={() => setNameFocused(true)}
               onBlur={() => setNameFocused(false)}
             />
-            {/* Quantité inline */}
             <View style={styles.qtyInlineWrap}>
               <TextInput
                 style={styles.qtyInlineInput}
@@ -367,8 +349,6 @@ export default function ShoppingListScreen() {
             </Pressable>
           </Animated.View>
         </View>
-
-        {/* Quantités rapides */}
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -390,8 +370,6 @@ export default function ShoppingListScreen() {
     </KeyboardAvoidingView>
   );
 }
-
-// ─── Styles ───────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
   container: {

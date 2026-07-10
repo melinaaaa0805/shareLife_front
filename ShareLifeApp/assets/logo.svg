@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 380 80" fill="none">
+
+  <!-- Pink – top left -->
+  <rect x="0" y="6" width="32" height="32" rx="9" fill="#EAB1CF"/>
+  <path d="M20 38 A14 14 0 0 1 32 26" stroke="white" stroke-width="6" stroke-linecap="round" opacity="0.5"/>
+
+  <!-- Yellow – top right -->
+  <rect x="36" y="6" width="32" height="32" rx="9" fill="#FFE27A"/>
+  <path d="M36 26 A14 14 0 0 1 48 38" stroke="white" stroke-width="6" stroke-linecap="round" opacity="0.5"/>
+
+  <!-- Purple – bottom left -->
+  <rect x="0" y="42" width="32" height="32" rx="9" fill="#9B7BEA"/>
+  <path d="M20 42 A14 14 0 0 0 32 54" stroke="white" stroke-width="6" stroke-linecap="round" opacity="0.5"/>
+
+  <!-- Mint – bottom right -->
+  <rect x="36" y="42" width="32" height="32" rx="9" fill="#A6D8C0"/>
+  <path d="M48 42 A14 14 0 0 1 36 54" stroke="white" stroke-width="6" stroke-linecap="round" opacity="0.5"/>
+
+  <!-- Wordmark -->
+  <text x="84" y="55" font-family="Inter, -apple-system, BlinkMacSystemFont, sans-serif" font-size="40" letter-spacing="-1">
+    <tspan font-weight="400" fill="#F5F5F5">Share</tspan><tspan font-weight="700" fill="#9B7BEA">Life</tspan>
+  </text>
+
+</svg>

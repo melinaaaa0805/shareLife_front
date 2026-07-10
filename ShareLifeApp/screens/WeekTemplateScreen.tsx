@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useCallback } from "react";
+﻿import React, { useEffect, useState, useRef, useCallback } from "react";
 import {
   View,
   Text,
@@ -36,8 +36,6 @@ const DAY_COLORS = [
 ];
 
 
-// ─── Task row ─────────────────────────────────────────────────────────────────
-
 function TaskRow({ task, index, accentColor }: { task: TemplateTask; index: number; accentColor: string }) {
   const slideAnim = useRef(new Animated.Value(16)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
@@ -54,15 +52,10 @@ function TaskRow({ task, index, accentColor }: { task: TemplateTask; index: numb
 
   return (
     <Animated.View style={[styles.taskRow, { opacity: opacityAnim, transform: [{ translateX: slideAnim }] }]}>
-      {/* Accent gauche */}
       <View style={[styles.taskAccent, { backgroundColor: accentColor }]} />
-
-      {/* Icône */}
       <View style={[styles.taskIconWrap, { backgroundColor: accentColor + "18" }]}>
         <Ionicons name={icon} size={16} color={accentColor} />
       </View>
-
-      {/* Contenu */}
       <View style={styles.taskBody}>
         <Text style={styles.taskTitle} numberOfLines={1}>{task.title}</Text>
         {task.description ? (
@@ -84,8 +77,6 @@ function TaskRow({ task, index, accentColor }: { task: TemplateTask; index: numb
     </Animated.View>
   );
 }
-
-// ─── Day section ──────────────────────────────────────────────────────────────
 
 function DaySection({
   day,
@@ -120,7 +111,6 @@ function DaySection({
         onPress={() => setCollapsed(c => !c)}
         activeOpacity={0.7}
       >
-        {/* Pastille jour */}
         <View style={[styles.dayBadge, { backgroundColor: color + (isDaily ? "22" : "18"), borderColor: color + "40" }]}>
           {isDaily
             ? <Ionicons name="repeat-outline" size={13} color={color} />
@@ -155,8 +145,6 @@ function DaySection({
     </Animated.View>
   );
 }
-
-// ─── Main ─────────────────────────────────────────────────────────────────────
 
 export default function WeekTemplateScreen() {
   const navigation = useNavigation();
@@ -256,15 +244,12 @@ export default function WeekTemplateScreen() {
 
   return (
     <View style={styles.container}>
-      {/* ── Header ── */}
       <Animated.View style={[styles.header, { opacity: headerAnim }]}>
         <View>
           <Text style={styles.title}>Modèle de semaine</Text>
           <Text style={styles.subtitle}>{currentGroup?.name} · Semaine {week}/{year}</Text>
         </View>
       </Animated.View>
-
-      {/* ── Stats ── */}
       <Animated.View style={[styles.statsRow, { opacity: headerAnim }]}>
         <View style={[styles.statCard, { borderColor: theme.colors.purple + "40" }]}>
           <Text style={[styles.statValue, { color: theme.colors.purple }]}>{templates.length}</Text>
@@ -283,13 +268,10 @@ export default function WeekTemplateScreen() {
           <Text style={styles.statLabel}>charge moy.</Text>
         </View>
       </Animated.View>
-
-      {/* ── Liste ── */}
       <ScrollView
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
       >
-        {/* Quotidien */}
         {dailyTasks.length > 0 && (
           <DaySection
             day="Quotidien"
@@ -299,8 +281,6 @@ export default function WeekTemplateScreen() {
             isDaily
           />
         )}
-
-        {/* Par jour */}
         {[0, 1, 2, 3, 4, 5, 6].map((d, i) =>
           tasksByDay[d]?.length > 0 ? (
             <DaySection
@@ -315,8 +295,6 @@ export default function WeekTemplateScreen() {
 
         <View style={{ height: 120 }} />
       </ScrollView>
-
-      {/* ── Footer CTA ── */}
       <View style={styles.footer}>
         <Animated.View style={{ transform: [{ scale: btnScale }] }}>
           <Pressable
@@ -349,8 +327,6 @@ export default function WeekTemplateScreen() {
     </View>
   );
 }
-
-// ─── Styles ───────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.background },

@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 import * as SecureStore from "expo-secure-store";
 import api, { setLogoutHandler } from "../api/api";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { registerPushToken, unregisterPushToken } from "../utils/notifications";
 
 export type AuthUser = {
   id: string;
@@ -42,6 +43,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         try {
           const res = await api.get("/auth/me");
           setUser(res.data);
+          registerPushToken().catch(() => {});
         } catch {
           await logout();
         }
@@ -56,6 +58,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     await SecureStore.setItemAsync("token", res.data.access_token);
     await AsyncStorage.setItem("email", email);
     setUser(res.data.user);
+    registerPushToken().catch(() => {});
   };
 
   const register = async (email: string, password: string, firstName: string) => {
@@ -63,9 +66,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     await SecureStore.setItemAsync("token", res.data.access_token);
     await AsyncStorage.setItem("email", email);
     setUser(res.data.user);
+    registerPushToken().catch(() => {});
   };
 
   const logout = async () => {
+    await unregisterPushToken();
     await SecureStore.deleteItemAsync("token");
     await AsyncStorage.removeItem("email");
     setUser(null);

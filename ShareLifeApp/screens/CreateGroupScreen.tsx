@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+﻿import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -117,7 +117,6 @@ export default function CreateGroupScreen() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {/* Hero icon */}
         <Animated.View
           style={[
             styles.heroWrapper,
@@ -136,8 +135,6 @@ export default function CreateGroupScreen() {
         <Text style={styles.subtitle}>
           Rassemblez vos proches et partagez la charge du quotidien.
         </Text>
-
-        {/* Card */}
         <Animated.View
           style={[
             styles.card,
@@ -147,7 +144,6 @@ export default function CreateGroupScreen() {
             },
           ]}
         >
-          {/* Accent top bar */}
           <View style={styles.cardAccent} />
 
           <Text style={styles.fieldLabel}>Nom du groupe</Text>
@@ -180,15 +176,11 @@ export default function CreateGroupScreen() {
           </View>
 
           {error && <Text style={styles.errorText}>{error}</Text>}
-
-          {/* Tip */}
           <View style={styles.tipRow}>
             <Ionicons name="information-circle-outline" size={14} color={theme.colors.textSecondary} />
             <Text style={styles.tipText}>{TIPS[0]}</Text>
           </View>
         </Animated.View>
-
-        {/* Features list */}
         <Animated.View style={{ opacity: cardOpacity }}>
           {[
             { icon: 'person-add-outline', label: 'Invitez vos colocataires par email' },
@@ -204,8 +196,6 @@ export default function CreateGroupScreen() {
           ))}
         </Animated.View>
       </ScrollView>
-
-      {/* Fixed pill button */}
       <Animated.View style={[styles.footer, { transform: [{ scale: btnScale }] }]}>
         <Pressable
           style={[styles.createBtn, !canSubmit && styles.createBtnDisabled]}

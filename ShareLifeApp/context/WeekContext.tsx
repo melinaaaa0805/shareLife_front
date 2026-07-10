@@ -1,7 +1,5 @@
 import React, { createContext, useContext, useState } from 'react';
 
-// ─── ISO week helper ──────────────────────────────────────────────────────────
-
 function getISOWeekAndYear(date: Date): { week: number; year: number } {
   const d = new Date(date);
   d.setHours(0, 0, 0, 0);
@@ -18,8 +16,6 @@ function getISOWeekAndYear(date: Date): { week: number; year: number } {
   return { week, year: d.getFullYear() };
 }
 
-// ─── Context type ─────────────────────────────────────────────────────────────
-
 type WeekContextType = {
   week: number;
   year: number;
@@ -30,8 +26,6 @@ type WeekContextType = {
 };
 
 const WeekContext = createContext<WeekContextType | undefined>(undefined);
-
-// ─── Provider ─────────────────────────────────────────────────────────────────
 
 export const WeekProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
@@ -75,8 +69,6 @@ export const WeekProvider: React.FC<{ children: React.ReactNode }> = ({
     </WeekContext.Provider>
   );
 };
-
-// ─── Hook ─────────────────────────────────────────────────────────────────────
 
 export const useWeek = () => {
   const ctx = useContext(WeekContext);

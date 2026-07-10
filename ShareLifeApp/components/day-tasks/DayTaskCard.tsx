@@ -10,6 +10,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../../assets/style/theme";
 import { TaskItem } from "../../types/types";
+import TaskTimerButton from "./TaskTimerButton";
 
 interface Props {
   item: TaskItem;
@@ -182,6 +183,7 @@ export default function DayTaskCard({
               <Text style={styles.doneConfirmText}>Terminé</Text>
             </View>
           )}
+          {isMine && <TaskTimerButton taskId={item.id} />}
         </View>
       </View>
     </Animated.View>

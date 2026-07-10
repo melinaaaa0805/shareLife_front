@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+﻿import React, { useState, useRef, useEffect } from "react";
 import {
   View,
   Text,
@@ -17,8 +17,6 @@ import { theme } from "../assets/style/theme";
 import api from "../api/api";
 import { useGroup } from "../context/GroupContext";
 import { useWeek } from "../context/WeekContext";
-
-// ─── Constants ────────────────────────────────────────────────────────────────
 
 const DAYS = [
   { label: "Lun", value: 0 },
@@ -68,8 +66,6 @@ const WEIGHT_LEVELS = [
   { label: "RELLOU", color: "#F44336", emoji: "😵‍💫" },
 ];
 
-// ─── Utils ────────────────────────────────────────────────────────────────────
-
 
 function computeTaskDate(year: number, weekNumber: number, dayOfWeek: number): string {
   const jan4 = new Date(year, 0, 4);
@@ -83,8 +79,6 @@ function computeTaskDate(year: number, weekNumber: number, dayOfWeek: number): s
   const dStr = String(taskDate.getDate()).padStart(2, "0");
   return `${y}-${m}-${dStr}`;
 }
-
-// ─── Sub-components ───────────────────────────────────────────────────────────
 
 function SectionHeader({ icon, title }: { icon: keyof typeof Ionicons.glyphMap; title: string }) {
   return (
@@ -208,8 +202,6 @@ const inputStyles = StyleSheet.create({
   },
 });
 
-// ─── Main screen ──────────────────────────────────────────────────────────────
-
 export default function AddTaskScreen() {
   const route = useRoute<any>();
   const taskToEdit = route.params?.task;
@@ -317,7 +309,6 @@ export default function AddTaskScreen() {
       style={styles.container}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
-      {/* Header */}
       <Animated.View style={[styles.header, { opacity: headerAnim }]}>
         <Text style={styles.screenTitle}>
           {taskToEdit ? "Modifier la tâche" : "Nouvelle tâche"}
@@ -335,8 +326,6 @@ export default function AddTaskScreen() {
         showsVerticalScrollIndicator={false}
       >
         <Animated.View style={{ transform: [{ translateX: shakeAnim }] }}>
-
-          {/* ── Section 1 : Infos ── */}
           {animCard(card1Anim, opacities[0],
             <View style={styles.card}>
               <SectionHeader icon="create-outline" title="Informations" />
@@ -363,13 +352,9 @@ export default function AddTaskScreen() {
               )}
             </View>
           )}
-
-          {/* ── Section 2 : Planification ── */}
           {animCard(card2Anim, opacities[1],
             <View style={styles.card}>
               <SectionHeader icon="calendar-outline" title="Planification" />
-
-              {/* Jour */}
               <Text style={styles.fieldLabel}>Jour de la semaine</Text>
               <View style={styles.dayRow}>
                 {DAYS.map(d => (
@@ -385,8 +370,6 @@ export default function AddTaskScreen() {
                   </TouchableOpacity>
                 ))}
               </View>
-
-              {/* Fréquence */}
               <Text style={[styles.fieldLabel, { marginTop: theme.spacing.md }]}>Fréquence</Text>
               <View style={styles.freqRow}>
                 {FREQUENCIES.map(f => (
@@ -409,8 +392,6 @@ export default function AddTaskScreen() {
               </View>
             </View>
           )}
-
-          {/* ── Section 3 : Durée ── */}
           {animCard(card3Anim, opacities[2],
             <View style={styles.card}>
               <SectionHeader icon="time-outline" title="Durée estimée" />
@@ -441,8 +422,6 @@ export default function AddTaskScreen() {
               />
             </View>
           )}
-
-          {/* ── Section 4 : Type de tâche ── */}
           {animCard(card4Anim, opacities[3],
             <View style={styles.card}>
               <SectionHeader icon="people-outline" title="Type de tâche" />
@@ -473,8 +452,6 @@ export default function AddTaskScreen() {
               })}
             </View>
           )}
-
-          {/* ── Section 5 : Poids ── */}
           {animCard(card5Anim, opacities[4],
             <View style={styles.card}>
               <SectionHeader icon="barbell-outline" title="Charge mentale" />
@@ -509,8 +486,6 @@ export default function AddTaskScreen() {
 
         </Animated.View>
       </ScrollView>
-
-      {/* Footer button */}
       <Animated.View style={[styles.footer, { transform: [{ scale: btnScale }] }]}>
         <Pressable
           style={[styles.saveBtn, !title.trim() && styles.saveBtnDisabled]}
@@ -537,8 +512,6 @@ export default function AddTaskScreen() {
     </KeyboardAvoidingView>
   );
 }
-
-// ─── Styles ───────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.background },

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+﻿import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -178,7 +178,6 @@ export default function CalendarScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Week header */}
       <Animated.View style={[styles.weekHeader, { opacity: headerAnim }]}>
         <TouchableOpacity style={styles.arrowBtn} onPress={goToPrevWeek}>
           <Ionicons name="chevron-back" size={20} color={theme.colors.purple} />
@@ -198,8 +197,6 @@ export default function CalendarScreen() {
           <Ionicons name="chevron-forward" size={20} color={theme.colors.purple} />
         </TouchableOpacity>
       </Animated.View>
-
-      {/* Progress bar */}
       {totalTasks > 0 && (
         <Animated.View style={[styles.progressBar, { opacity: headerAnim }]}>
           <View style={styles.progressBg}>
@@ -210,8 +207,6 @@ export default function CalendarScreen() {
           </Text>
         </Animated.View>
       )}
-
-      {/* Grid */}
       <Animated.View
         style={{ flex: 1, opacity: listOpacity, transform: [{ translateY: listAnim }] }}
       >
@@ -225,8 +220,6 @@ export default function CalendarScreen() {
           showsVerticalScrollIndicator={false}
         />
       </Animated.View>
-
-      {/* FAB */}
       <Animated.View style={[styles.fabWrapper, { transform: [{ scale: btnScale }] }]}>
         <Pressable
           style={styles.fab}
@@ -241,8 +234,6 @@ export default function CalendarScreen() {
           <Ionicons name="add" size={28} color="#FFF" />
         </Pressable>
       </Animated.View>
-
-      {/* Bottom sheet modal */}
       <Modal visible={modalVisible} transparent animationType="none" onRequestClose={closeModal}>
         <Pressable style={styles.modalOverlay} onPress={closeModal}>
           <Animated.View
