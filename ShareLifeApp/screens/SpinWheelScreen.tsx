@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+﻿import React, { useRef, useState } from "react";
 import {
   View,
   Text,
@@ -112,13 +112,9 @@ export default function SpinWheelScreen() {
       <Text style={styles.subtitle}>
         {n} participant{n > 1 ? "s" : ""}
       </Text>
-
-      {/* Pointeur fixe */}
       <View style={styles.pointerContainer}>
         <View style={styles.pointer} />
       </View>
-
-      {/* Roue */}
       <View style={[styles.wheelWrapper, { width: WHEEL_SIZE, height: WHEEL_SIZE }]}>
         <Animated.View
           style={[
@@ -136,7 +132,6 @@ export default function SpinWheelScreen() {
 
             return (
               <React.Fragment key={member.id}>
-                {/* Ligne de séparation */}
                 <View
                   style={[
                     styles.divider,
@@ -152,7 +147,6 @@ export default function SpinWheelScreen() {
                     },
                   ]}
                 />
-                {/* Fond de segment (couleur en arc) */}
                 <View
                   style={[
                     styles.segment,
@@ -168,7 +162,6 @@ export default function SpinWheelScreen() {
                     },
                   ]}
                 />
-                {/* Nom du membre */}
                 <View
                   style={[
                     styles.labelContainer,
@@ -186,20 +179,14 @@ export default function SpinWheelScreen() {
               </React.Fragment>
             );
           })}
-
-          {/* Centre de la roue */}
           <View style={styles.center} />
         </Animated.View>
       </View>
-
-      {/* Résultat */}
       {winner && (
         <View style={styles.winnerBadge}>
           <Text style={styles.winnerText}>👑 {winner.firstName}</Text>
         </View>
       )}
-
-      {/* Bouton */}
       <TouchableOpacity
         style={[styles.spinBtn, spinning && styles.spinBtnDisabled]}
         onPress={spin}

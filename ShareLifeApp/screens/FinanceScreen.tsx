@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+﻿import React, { useEffect, useRef, useState } from "react";
 import {
   Alert,
   Animated,
@@ -25,6 +25,7 @@ import BalanceSummary from "../components/finance/BalanceSummary";
 import ExpenseCard from "../components/finance/ExpenseCard";
 import AddExpenseModal from "../components/finance/AddExpenseModal";
 import AddReimbursementModal from "../components/finance/AddReimbursementModal";
+import EditExpenseModal from "../components/finance/EditExpenseModal";
 
 type Tab = "expenses" | "reimbursements" | "balances";
 
@@ -43,6 +44,7 @@ export default function FinanceScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [showAddExpense, setShowAddExpense] = useState(false);
   const [showAddReimbursement, setShowAddReimbursement] = useState(false);
+  const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
 
   const headerOpacity = useRef(new Animated.Value(0)).current;
   const contentAnim = useRef(new Animated.Value(16)).current;
@@ -102,7 +104,6 @@ export default function FinanceScreen() {
 
   const currentUserId = user?.id ?? "";
 
-  // ── Summary bar ─────────────────────────────────────────────────────────────
   const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0);
   const myExpenses = expenses
     .filter((e) => e.participants.some((p) => p.userId === currentUserId))
@@ -119,7 +120,6 @@ export default function FinanceScreen() {
 
   return (
     <View style={styles.root}>
-      {/* ── Header ─── */}
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <View style={styles.headerCenter}>
           <Text style={styles.headerTitle}>Finances</Text>
@@ -128,8 +128,6 @@ export default function FinanceScreen() {
           </Text>
         </View>
       </View>
-
-      {/* ── Summary pills ─── */}
       <Animated.View style={[styles.summaryRow, { opacity: headerOpacity }]}>
         <View style={styles.summaryPill}>
           <Text style={styles.summaryLabel}>Total dépensé</Text>
@@ -148,8 +146,6 @@ export default function FinanceScreen() {
           <Text style={styles.summaryValue}>{members.length}</Text>
         </View>
       </Animated.View>
-
-      {/* ── Tab bar ─── */}
       <View style={styles.tabBar}>
         {([
           { key: "expenses" as Tab,        label: "Dépenses",        icon: "receipt-outline" as keyof typeof Ionicons.glyphMap },
@@ -160,6 +156,9 @@ export default function FinanceScreen() {
             key={t.key}
             style={[styles.tabBtn, tab === t.key && styles.tabBtnActive]}
             onPress={() => setTab(t.key)}
+            accessibilityRole="tab"
+            accessibilityLabel={t.label}
+            accessibilityState={{ selected: tab === t.key }}
           >
             <Ionicons
               name={t.icon}
@@ -172,8 +171,6 @@ export default function FinanceScreen() {
           </Pressable>
         ))}
       </View>
-
-      {/* ── Content ─── */}
       <Animated.View style={[styles.content, { transform: [{ translateY: contentAnim }] }]}>
         <ScrollView
           contentContainerStyle={styles.listContent}
@@ -201,6 +198,7 @@ export default function FinanceScreen() {
                     expense={expense}
                     currentUserId={currentUserId}
                     onDelete={handleDeleteExpense}
+                    onEdit={setEditingExpense}
                     index={i}
                   />
                 ))
@@ -257,23 +255,29 @@ export default function FinanceScreen() {
           )}
         </ScrollView>
       </Animated.View>
-
-      {/* ── FABs ─── */}
       <View style={[styles.fabRow, { paddingBottom: insets.bottom + 12 }]}>
         {tab === "reimbursements" ? (
-          <Pressable style={[styles.fab, styles.fabMint]} onPress={() => setShowAddReimbursement(true)}>
+          <Pressable
+            style={[styles.fab, styles.fabMint]}
+            onPress={() => setShowAddReimbursement(true)}
+            accessibilityRole="button"
+            accessibilityLabel="Ajouter un remboursement"
+          >
             <Ionicons name="swap-horizontal-outline" size={20} color={theme.colors.background} />
             <Text style={styles.fabText}>Ajouter un remboursement</Text>
           </Pressable>
         ) : (
-          <Pressable style={styles.fab} onPress={() => setShowAddExpense(true)}>
+          <Pressable
+            style={styles.fab}
+            onPress={() => setShowAddExpense(true)}
+            accessibilityRole="button"
+            accessibilityLabel="Ajouter une dépense"
+          >
             <Ionicons name="add" size={20} color={theme.colors.background} />
             <Text style={styles.fabText}>Ajouter une dépense</Text>
           </Pressable>
         )}
       </View>
-
-      {/* ── Modals ─── */}
       <AddExpenseModal
         visible={showAddExpense}
         onClose={() => setShowAddExpense(false)}
@@ -287,6 +291,14 @@ export default function FinanceScreen() {
         onClose={() => setShowAddReimbursement(false)}
         onCreated={fetchAll}
         groupId={groupId}
+        members={members}
+        currentUserId={currentUserId}
+      />
+      <EditExpenseModal
+        visible={editingExpense !== null}
+        expense={editingExpense}
+        onClose={() => setEditingExpense(null)}
+        onUpdated={fetchAll}
         members={members}
         currentUserId={currentUserId}
       />

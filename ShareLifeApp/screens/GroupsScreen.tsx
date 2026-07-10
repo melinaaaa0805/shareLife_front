@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useCallback } from "react";
+﻿import React, { useEffect, useRef, useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -25,7 +25,6 @@ import { theme } from "../assets/style/theme";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "Groups">;
 
-// ─── Palette de couleurs avatar ───────────────────────────────────────────────
 const AVATAR_PALETTE = [
   "#9B7BEA", // purple
   "#EAB1CF", // pink
@@ -41,16 +40,12 @@ function getDefaultColor(name: string) {
   return AVATAR_PALETTE[name.charCodeAt(0) % AVATAR_PALETTE.length];
 }
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
 type Invitation = {
   id: string;
   group: { id: string; name: string };
   invitedBy: { id: string; firstName: string; email: string };
   createdAt: string;
 };
-
-// ─── Invitation card ──────────────────────────────────────────────────────────
 
 function InvitationCard({
   invitation,
@@ -97,6 +92,8 @@ function InvitationCard({
             style={invStyles.declineBtn}
             onPress={() => onDecline(invitation.id)}
             activeOpacity={0.75}
+            accessibilityRole="button"
+            accessibilityLabel={`Refuser l'invitation au groupe ${invitation.group.name}`}
           >
             <Ionicons name="close" size={14} color="#F44336" />
             <Text style={invStyles.declineText}>Refuser</Text>
@@ -105,6 +102,8 @@ function InvitationCard({
             style={invStyles.acceptBtn}
             onPress={() => onAccept(invitation.id)}
             activeOpacity={0.75}
+            accessibilityRole="button"
+            accessibilityLabel={`Rejoindre le groupe ${invitation.group.name}`}
           >
             <Ionicons name="checkmark" size={14} color="#FFF" />
             <Text style={invStyles.acceptText}>Rejoindre</Text>
@@ -167,7 +166,6 @@ const invStyles = StyleSheet.create({
   acceptText: { fontSize: 13, fontFamily: "Inter-SemiBold", color: "#FFF" },
 });
 
-// ─── Composant carte groupe ────────────────────────────────────────────────────
 function GroupCard({
   group,
   index,
@@ -215,6 +213,8 @@ function GroupCard({
         onPressOut={() =>
           Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true, speed: 30 }).start()
         }
+        accessibilityRole="button"
+        accessibilityLabel={`Groupe ${group.name}, ${group.members?.length ?? group.membersCount ?? 0} membre${(group.members?.length ?? group.membersCount ?? 0) !== 1 ? 's' : ''}`}
       >
         <View style={[styles.groupCardAccent, { backgroundColor: accent }]} />
         <View style={[styles.groupCardAvatar, { backgroundColor: accent + "22", borderColor: accent }]}>
@@ -232,7 +232,6 @@ function GroupCard({
   );
 }
 
-// ─── Écran principal ───────────────────────────────────────────────────────────
 export default function HomeScreen() {
   const navigation = useNavigation<Nav>();
   const { user, logout, updateUser } = useAuth();
@@ -377,13 +376,14 @@ export default function HomeScreen() {
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
       >
-        {/* ── Header profil ── */}
         <View style={styles.profileHeader}>
           <View style={styles.profileLeft}>
             <TouchableOpacity
               style={[styles.avatar, { backgroundColor: avatarColor + "22", borderColor: avatarColor }]}
               onPress={openSheet}
               activeOpacity={0.8}
+              accessibilityRole="button"
+              accessibilityLabel="Modifier mon profil"
             >
               <Text style={[styles.avatarInitial, { color: avatarColor }]}>{initial}</Text>
               <View style={styles.avatarEditBadge}>
@@ -402,12 +402,35 @@ export default function HomeScreen() {
             </View>
           </View>
 
-          <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
-            <Text style={styles.logoutIcon}>⏻</Text>
-          </TouchableOpacity>
+          <View style={styles.headerActions}>
+            <TouchableOpacity
+              style={styles.invBtn}
+              onPress={() => navigation.navigate("Invitations")}
+              activeOpacity={0.8}
+              accessibilityRole="button"
+              accessibilityLabel={
+                invitations.length > 0
+                  ? `Invitations, ${invitations.length} en attente`
+                  : "Invitations"
+              }
+            >
+              <Ionicons name="mail-outline" size={20} color={theme.colors.textPrimary} />
+              {invitations.length > 0 && (
+                <View style={styles.invBtnBadge}>
+                  <Text style={styles.invBtnBadgeText}>{invitations.length}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.logoutBtn}
+              onPress={handleLogout}
+              accessibilityRole="button"
+              accessibilityLabel="Se déconnecter"
+            >
+              <Text style={styles.logoutIcon}>⏻</Text>
+            </TouchableOpacity>
+          </View>
         </View>
-
-        {/* ── Section invitations ── */}
         {invitations.length > 0 && (
           <View style={styles.invitationsSection}>
             <View style={styles.sectionHeader}>
@@ -427,8 +450,6 @@ export default function HomeScreen() {
             ))}
           </View>
         )}
-
-        {/* ── Section groupes ── */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Mes groupes</Text>
           <Text style={styles.sectionCount}>{groups.length}</Text>
@@ -463,18 +484,16 @@ export default function HomeScreen() {
 
         <View style={{ height: 110 }} />
       </ScrollView>
-
-      {/* ── Bouton créer groupe ── */}
       <View style={styles.footer}>
         <Pressable
           style={styles.createBtn}
           onPress={() => navigation.navigate("CreateGroup")}
+          accessibilityRole="button"
+          accessibilityLabel="Créer un nouveau groupe"
         >
           <Text style={styles.createBtnText}>+ Créer un groupe</Text>
         </Pressable>
       </View>
-
-      {/* ── Bottom sheet profil ── */}
       <Modal
         visible={sheetVisible}
         transparent
@@ -485,21 +504,17 @@ export default function HomeScreen() {
           style={styles.sheetOverlay}
           behavior={Platform.OS === "ios" ? "padding" : undefined}
         >
-          {/* Backdrop */}
           <Animated.View
             style={[styles.backdrop, { opacity: backdropOpacity }]}
           >
             <TouchableOpacity style={{ flex: 1 }} onPress={closeSheet} />
           </Animated.View>
-
-          {/* Sheet */}
           <Animated.View
             style={[
               styles.sheet,
               { transform: [{ translateY: sheetTranslateY }] },
             ]}
           >
-            {/* Poignée */}
             <View style={styles.sheetHandle} />
 
             <View style={styles.sheetHeaderRow}>
@@ -508,8 +523,6 @@ export default function HomeScreen() {
                 <Text style={styles.sheetClose}>✕</Text>
               </TouchableOpacity>
             </View>
-
-            {/* Avatar + palette */}
             <View style={styles.avatarSection}>
               <View
                 style={[
@@ -535,8 +548,6 @@ export default function HomeScreen() {
                 ))}
               </View>
             </View>
-
-            {/* Tabs */}
             <View style={styles.tabs}>
               <TouchableOpacity
                 style={[styles.tab, activeTab === "info" && styles.tabActive]}
@@ -616,7 +627,6 @@ export default function HomeScreen() {
   );
 }
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.background },
   scroll: { paddingHorizontal: theme.spacing.lg, paddingTop: theme.spacing.xl + 16 },
@@ -669,6 +679,38 @@ const styles = StyleSheet.create({
     color: theme.colors.textSecondary,
     fontFamily: theme.typography.fontFamily.regular,
     marginTop: 2,
+  },
+  headerActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  invBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  invBtnBadge: {
+    position: "absolute",
+    top: -3,
+    right: -3,
+    backgroundColor: theme.colors.purple,
+    borderRadius: 8,
+    minWidth: 16,
+    height: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 3,
+  },
+  invBtnBadgeText: {
+    fontSize: 9,
+    fontFamily: "Inter-Bold",
+    color: "#FFF",
   },
   logoutBtn: {
     width: 38,

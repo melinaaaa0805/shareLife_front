@@ -44,12 +44,12 @@ import TasksScreen from "../screens/TasksScreens";
 import UnassignedTasksScreen from "../screens/UnassignedScreen";
 import WeekTemplateScreen from "../screens/WeekTemplateScreen";
 import FinanceScreen from "../screens/FinanceScreen";
+import InvitationsScreen from "../screens/InvitationsScreen";
+import ScoresScreen from "../screens/ScoresScreen";
 import { RootStackParamList } from "../types/types";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator();
-
-// ─── Back button ──────────────────────────────────────────────────────────────
 
 function BackButton() {
   const navigation = useNavigation();
@@ -68,8 +68,6 @@ function BackButton() {
   );
 }
 
-// ─── Shared header options ────────────────────────────────────────────────────
-
 const sharedHeaderOptions = {
   headerStyle: {
     backgroundColor: theme.colors.surface,
@@ -86,8 +84,6 @@ const sharedHeaderOptions = {
   // Thin separator
   headerBottomBorderColor: theme.colors.border,
 } as const;
-
-// ─── Bottom tabs ──────────────────────────────────────────────────────────────
 
 function GroupTabsHeader() {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
@@ -159,6 +155,8 @@ function MainTabs() {
               iconName = focused ? "restaurant" : "restaurant-outline";
             else if (route.name === "Finance")
               iconName = focused ? "wallet" : "wallet-outline";
+            else if (route.name === "Scores")
+              iconName = focused ? "trophy" : "trophy-outline";
             return <Ionicons name={iconName} size={22} color={color} />;
           },
         })}
@@ -188,12 +186,15 @@ function MainTabs() {
           component={FinanceScreen}
           options={{ tabBarLabel: "Finances" }}
         />
+        <Tab.Screen
+          name="Scores"
+          component={ScoresScreen}
+          options={{ tabBarLabel: "Scores" }}
+        />
       </Tab.Navigator>
     </View>
   );
 }
-
-// ─── App navigator ────────────────────────────────────────────────────────────
 
 export default function AppNavigator() {
   const { isAuthenticated, loading } = useAuth();
@@ -240,12 +241,12 @@ export default function AppNavigator() {
             <Stack.Screen
               name="Groups"
               component={GroupsScreen}
-              options={{ headerShown: false }}
+              options={{ headerShown: false, animation: 'fade' }}
             />
             <Stack.Screen
               name="MainTabs"
               component={MainTabs}
-              options={{ headerShown: false }}
+              options={{ headerShown: false, animation: 'slide_from_right' }}
             />
             <Stack.Screen
               name="GroupDetail"
@@ -311,6 +312,11 @@ export default function AppNavigator() {
               name="SmartAssign"
               component={SmartAssignScreen}
               options={{ title: "Répartition intelligente" }}
+            />
+            <Stack.Screen
+              name="Invitations"
+              component={InvitationsScreen}
+              options={{ headerShown: false }}
             />
           </>
         )}

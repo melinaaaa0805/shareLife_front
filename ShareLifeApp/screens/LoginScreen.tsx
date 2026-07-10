@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+﻿import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -94,13 +94,13 @@ export default function LoginScreen() {
             autoPlay
             loop
             style={styles.lottie}
+            accessibilityElementsHidden={true}
+            importantForAccessibility="no-hide-descendants"
           />
         </View>
 
         <Text style={styles.title}>Bienvenue 👋</Text>
         <Text style={styles.subtitle}>Connecte-toi pour continuer</Text>
-
-        {/* Formulaire */}
         <Animated.View style={{ transform: [{ translateX: shakeAnim }] }}>
           <View style={styles.fieldGroup}>
             <Text style={styles.label}>Email</Text>
@@ -115,6 +115,8 @@ export default function LoginScreen() {
               autoCorrect={false}
               textContentType="emailAddress"
               autoComplete="email"
+              accessibilityLabel="Adresse email"
+              accessibilityHint="Saisir votre adresse email de connexion"
             />
           </View>
 
@@ -130,28 +132,37 @@ export default function LoginScreen() {
                 secureTextEntry={!showPassword}
                 textContentType="password"
                 autoComplete="password"
+                accessibilityLabel="Mot de passe"
               />
               <TouchableOpacity
                 onPress={() => setShowPassword(v => !v)}
                 style={styles.eyeBtn}
+                accessibilityRole="button"
+                accessibilityLabel={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
               >
                 <Text style={styles.eyeIcon}>{showPassword ? '🙈' : '👁️'}</Text>
               </TouchableOpacity>
             </View>
           </View>
 
-          {error && <Text style={styles.errorText}>{error}</Text>}
-
-          {/* Mot de passe oublié */}
+          {error && (
+            <Text
+              style={styles.errorText}
+              accessibilityRole="alert"
+              accessibilityLiveRegion="polite"
+            >
+              {error}
+            </Text>
+          )}
           <TouchableOpacity
             onPress={() => navigation.navigate('ForgotPassword' as never)}
             style={styles.forgotBtn}
+            accessibilityRole="button"
+            accessibilityLabel="Mot de passe oublié ?"
           >
             <Text style={styles.forgotText}>Mot de passe oublié ?</Text>
           </TouchableOpacity>
         </Animated.View>
-
-        {/* CTA */}
         <Animated.View style={{ transform: [{ scale: btnScale }] }}>
           <Pressable
             style={[styles.loginButton, !canSubmit && styles.loginButtonDisabled]}
@@ -163,6 +174,9 @@ export default function LoginScreen() {
               Animated.spring(btnScale, { toValue: 1, useNativeDriver: true, speed: 30 }).start()
             }
             disabled={!canSubmit}
+            accessibilityRole="button"
+            accessibilityLabel={loading ? 'Connexion en cours' : 'Se connecter'}
+            accessibilityState={{ disabled: !canSubmit }}
           >
             <Text style={styles.loginButtonText}>
               {loading ? 'Connexion…' : 'Se connecter'}
@@ -173,6 +187,8 @@ export default function LoginScreen() {
         <TouchableOpacity
           style={styles.registerButton}
           onPress={() => navigation.navigate('Register' as never)}
+          accessibilityRole="button"
+          accessibilityLabel="Pas encore de compte ? S'inscrire"
         >
           <Text style={styles.registerButtonText}>Pas encore de compte ? S'inscrire</Text>
         </TouchableOpacity>

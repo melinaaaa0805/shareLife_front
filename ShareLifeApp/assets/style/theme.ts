@@ -1,14 +1,11 @@
-// src/theme/theme.ts
 import { DarkTheme } from '@react-navigation/native';
 
 export const colors = {
-  /* ===== Brand / Pastel ===== */
   pink: '#EAB1CF',
   yellow: '#FFE27A',
   purple: '#9B7BEA',
   mint: '#A6D8C0',
 
-  /* ===== UI Neutrals ===== */
   background: '#0E0E0E',
   surface: '#1A1A1A',
   card: '#1F1F1F',
@@ -17,7 +14,6 @@ export const colors = {
   textSecondary: '#B5B5B5',
   border: '#2A2A2A',
 
-  /* ===== States ===== */
   success: '#A6D8C0',
   warning: '#FFE27A',
   danger: '#EAB1CF',

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+﻿import React, { useEffect, useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -17,10 +17,10 @@ import { useAuth } from '../context/AuthContext';
 import { useWeek } from '../context/WeekContext';
 import { theme } from '../assets/style/theme';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import InsightsSection from '../components/dashboard/InsightsSection';
+import GamificationCard from '../components/dashboard/GamificationCard';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
-
-// ─── Types ────────────────────────────────────────────────────────────────────
 
 type WeekTask = {
   id: string;
@@ -30,8 +30,6 @@ type WeekTask = {
   done: boolean;
   assignedUser: { id: string; firstName: string } | null;
 };
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
 
 
 /**
@@ -62,8 +60,6 @@ function getLoadLevel(score: number) {
   return LOAD_LEVELS.find(l => score <= l.max) ?? LOAD_LEVELS[LOAD_LEVELS.length - 1];
 }
 
-// ─── Animated counter ────────────────────────────────────────────────────────
-
 function AnimatedNumber({ value, style }: { value: number; style?: any }) {
   const anim = useRef(new Animated.Value(0)).current;
   const [display, setDisplay] = useState(0);
@@ -76,8 +72,6 @@ function AnimatedNumber({ value, style }: { value: number; style?: any }) {
 
   return <Text style={style}>{display}</Text>;
 }
-
-// ─── Stat card ───────────────────────────────────────────────────────────────
 
 function StatCard({
   icon, label, value, accent, delay,
@@ -109,8 +103,6 @@ function StatCard({
   );
 }
 
-// ─── Mental load card ─────────────────────────────────────────────────────────
-
 function MentalLoadCard({ score, delay }: { score: number; delay: number }) {
   const level = getLoadLevel(score);
   const MAX_DISPLAY = 20;
@@ -141,8 +133,6 @@ function MentalLoadCard({ score, delay }: { score: number; delay: number }) {
           <Text style={[styles.loadBadgeText, { color: level.color }]}>{level.label}</Text>
         </View>
       </View>
-
-      {/* Gauge */}
       <View style={styles.gaugeRow}>
         <View style={styles.gaugeBg}>
           <Animated.View
@@ -166,8 +156,6 @@ function MentalLoadCard({ score, delay }: { score: number; delay: number }) {
     </Animated.View>
   );
 }
-
-// ─── My tasks progress ───────────────────────────────────────────────────────
 
 function MyTasksProgress({ done, total, delay }: { done: number; total: number; delay: number }) {
   const pct = total > 0 ? done / total : 0;
@@ -206,8 +194,6 @@ function MyTasksProgress({ done, total, delay }: { done: number; total: number; 
     </Animated.View>
   );
 }
-
-// ─── Member row ──────────────────────────────────────────────────────────────
 
 function MemberRow({
   member, total, done, index, isOwner,
@@ -259,8 +245,6 @@ function MemberRow({
   );
 }
 
-// ─── Action card ─────────────────────────────────────────────────────────────
-
 function ActionCard({
   icon, label, sub, accent, onPress, delay, badge,
 }: {
@@ -305,8 +289,6 @@ function ActionCard({
     </Animated.View>
   );
 }
-
-// ─── Main screen ─────────────────────────────────────────────────────────────
 
 const GroupDashboardScreen = () => {
   const navigation = useNavigation<NavigationProp>();
@@ -387,7 +369,6 @@ const GroupDashboardScreen = () => {
     );
   };
 
-  // ── Computed stats ───────────────────────────────────────────────────────
   const myTasks       = tasks.filter(t => t.assignedUser?.id === currentUserId);
   const myDone        = myTasks.filter(t => t.done);
   const unassigned    = tasks.filter(t => !t.assignedUser);
@@ -410,8 +391,6 @@ const GroupDashboardScreen = () => {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-
-      {/* ── Header ── */}
       <Animated.View style={[styles.header, { opacity: headerAnim }]}>
         <View style={styles.headerLeft}>
           <Text style={styles.groupName}>{currentGroup.name}</Text>
@@ -434,8 +413,6 @@ const GroupDashboardScreen = () => {
           )}
         </View>
       </Animated.View>
-
-      {/* ── Week nav ── */}
       <View style={styles.weekNav}>
         <Pressable style={styles.weekNavArrow} onPress={goToPrevWeek}>
           <Ionicons name="chevron-back" size={18} color={theme.colors.purple} />
@@ -454,8 +431,6 @@ const GroupDashboardScreen = () => {
           <Ionicons name="chevron-forward" size={18} color={theme.colors.purple} />
         </Pressable>
       </View>
-
-      {/* ── 3 stat cards ── */}
       <View style={styles.statsRow}>
         <StatCard
           icon="person-outline"
@@ -479,16 +454,10 @@ const GroupDashboardScreen = () => {
           delay={240}
         />
       </View>
-
-      {/* ── Mental load ── */}
       <MentalLoadCard score={mentalLoad} delay={300} />
-
-      {/* ── My progress ── */}
       {myTasks.length > 0 && (
         <MyTasksProgress done={myDone.length} total={myTasks.length} delay={380} />
       )}
-
-      {/* ── Members leaderboard ── */}
       {memberStats.length > 0 && (
         <Animated.View style={[styles.section, { opacity: headerAnim }]}>
           <View style={styles.sectionHeader}>
@@ -509,8 +478,8 @@ const GroupDashboardScreen = () => {
           ))}
         </Animated.View>
       )}
-
-      {/* ── Quick actions ── */}
+      <InsightsSection groupId={groupId} week={week} year={year} />
+      <GamificationCard />
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <View style={styles.sectionIconBox}>
@@ -564,8 +533,6 @@ const GroupDashboardScreen = () => {
           )}
         </View>
       </View>
-
-      {/* ── Reset week (admin only) ── */}
       {isAdmin && (
         <Pressable
           style={[styles.resetBtn, resetting && styles.resetBtnDisabled]}
@@ -584,8 +551,6 @@ const GroupDashboardScreen = () => {
 };
 
 export default GroupDashboardScreen;
-
-// ─── Styles ──────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.background },
@@ -619,7 +584,7 @@ const styles = StyleSheet.create({
   // Mental load card
   loadCard: { backgroundColor: theme.colors.surface, borderRadius: theme.radius.lg, padding: theme.spacing.md, borderWidth: 1, borderColor: theme.colors.border },
   loadTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: theme.spacing.md },
-  loadLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  loadLeft: { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1, marginRight: 8 },
   loadBadge: { borderRadius: theme.radius.round, paddingHorizontal: 10, paddingVertical: 4, borderWidth: 1 },
   loadBadgeText: { fontSize: 12, fontFamily: theme.typography.fontFamily.semiBold },
   gaugeRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 },

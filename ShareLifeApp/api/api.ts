@@ -10,10 +10,9 @@ export function setLogoutHandler(fn: LogoutHandler) {
 }
 
 const api = axios.create({
-  baseURL: "http://192.168.1.24:3000", // change selon ton backend
+  baseURL: "https://api.sharelifeapp.com",
 });
 
-// Ajouter le token à chaque requête
 api.interceptors.request.use(async (config) => {
   const token = await SecureStore.getItemAsync("token");
 

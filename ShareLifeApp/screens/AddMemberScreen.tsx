@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+﻿import React, { useState, useRef, useEffect } from "react";
 import {
   View,
   Text,
@@ -144,7 +144,6 @@ const AddMemberScreen = () => {
       behavior={Platform.OS === "ios" ? "padding" : undefined}
       keyboardVerticalOffset={80}
     >
-      {/* Header avec illustration */}
       <Animated.View style={[styles.heroSection, { opacity: titleOpacity }]}>
         <LottieView
           source={require("../assets/lottie/add-member.json")}
@@ -157,8 +156,6 @@ const AddMemberScreen = () => {
           Partagez la charge mentale avec vos proches
         </Text>
       </Animated.View>
-
-      {/* Card flottante */}
       <Animated.View
         style={[
           styles.card,
@@ -207,8 +204,6 @@ const AddMemberScreen = () => {
           La personne doit déjà avoir un compte ShareLife
         </Text>
       </Animated.View>
-
-      {/* Bouton CTA fixé en bas */}
       <View style={styles.footer}>
         <Animated.View style={{ transform: [{ scale: btnScale }] }}>
           <Pressable

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+﻿import React, { useEffect, useState, useRef } from "react";
 import {
   View,
   Text,
@@ -145,7 +145,6 @@ export default function GroupDetailScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* ── Hero header ── */}
         <Animated.View
           style={[
             styles.hero,
@@ -173,15 +172,12 @@ export default function GroupDetailScreen() {
             </View>
           </View>
         </Animated.View>
-
-        {/* ── Corps ── */}
         <Animated.View
           style={{
             transform: [{ translateY: contentAnim }],
             opacity: contentOpacity,
           }}
         >
-          {/* Section membres */}
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Membres</Text>
@@ -227,8 +223,6 @@ export default function GroupDetailScreen() {
               </View>
             )}
           </View>
-
-          {/* Section mode */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Mode du groupe</Text>
 
@@ -269,8 +263,6 @@ export default function GroupDetailScreen() {
                 <Text style={styles.modeDesc}>Répartition auto équilibrée</Text>
               </TouchableOpacity>
             </Animated.View>
-
-            {/* Admin badge (FUNNY) */}
             {group.mode === "FUNNY" && group.weeklyAdmin && (
               <View style={styles.adminBadge}>
                 <Text style={styles.adminBadgeEmoji}>👑</Text>
@@ -280,8 +272,6 @@ export default function GroupDetailScreen() {
                 </View>
               </View>
             )}
-
-            {/* Bouton roue (FUNNY) */}
             {group.mode === "FUNNY" && (
               <TouchableOpacity
                 style={styles.spinButton}
@@ -299,8 +289,6 @@ export default function GroupDetailScreen() {
                 <Text style={styles.spinButtonText}>🎰 Tirer le chef de la semaine</Text>
               </TouchableOpacity>
             )}
-
-            {/* SMART mode info + action */}
             {group.mode === "SMART" && (
               <>
                 <View style={styles.smartInfoBox}>
@@ -321,12 +309,8 @@ export default function GroupDetailScreen() {
             )}
           </View>
         </Animated.View>
-
-        {/* Espace pour le footer fixe */}
         <View style={{ height: 110 }} />
       </ScrollView>
-
-      {/* ── Footer fixe ── */}
       <View style={styles.footer}>
         <Animated.View style={{ transform: [{ scale: startBtnScale }] }}>
           <Pressable style={styles.startButton} onPress={startGroup}>
@@ -334,8 +318,6 @@ export default function GroupDetailScreen() {
           </Pressable>
         </Animated.View>
       </View>
-
-      {/* ── Modal profil membre (mode SMART) ── */}
       <Modal
         visible={!!profileModalMember}
         transparent

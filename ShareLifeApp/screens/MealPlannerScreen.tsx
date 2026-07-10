@@ -1,4 +1,4 @@
-import { Ionicons } from "@expo/vector-icons";
+﻿import { Ionicons } from "@expo/vector-icons";
 import { useIsFocused } from "@react-navigation/native";
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import {
@@ -30,8 +30,6 @@ import IngredientEditor from "../components/meal-planner/IngredientEditor";
 
 const DAYS_SHORT = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
 
-// ─── Main Screen ──────────────────────────────────────────────────────────────
-
 type AddTab = "catalog" | "search" | "manual";
 
 export default function MealPlannerScreen() {
@@ -44,7 +42,6 @@ export default function MealPlannerScreen() {
   const [votes, setVotes] = useState<MealVote[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // ── Add modal ──
   const [showAddModal, setShowAddModal] = useState(false);
   const [addTab, setAddTab] = useState<AddTab>("catalog");
 
@@ -67,7 +64,6 @@ export default function MealPlannerScreen() {
 
   const [saving, setSaving] = useState(false);
 
-  // ── Edit modal ──
   const [editingMeal, setEditingMeal] = useState<WeeklyMeal | null>(null);
   const [editName, setEditName] = useState("");
   const [editDesc, setEditDesc] = useState("");
@@ -299,7 +295,6 @@ export default function MealPlannerScreen() {
 
   return (
     <View style={styles.container}>
-      {/* ── Header ── */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <Text style={styles.screenTitle}>Repas</Text>
@@ -313,8 +308,6 @@ export default function MealPlannerScreen() {
           <Text style={styles.addBtnText}>Ajouter</Text>
         </TouchableOpacity>
       </View>
-
-      {/* ── Week navigation ── */}
       <View style={styles.weekNav}>
         <TouchableOpacity onPress={goToPrevWeek} style={styles.weekArrow}>
           <Ionicons name="chevron-back" size={20} color={theme.colors.purple} />
@@ -342,8 +335,6 @@ export default function MealPlannerScreen() {
           <Ionicons name="chevron-forward" size={20} color={theme.colors.purple} />
         </TouchableOpacity>
       </View>
-
-      {/* ── Day votes recap ── */}
       {votes.length > 0 && (
         <ScrollView
           horizontal
@@ -377,8 +368,6 @@ export default function MealPlannerScreen() {
           })}
         </ScrollView>
       )}
-
-      {/* ── Meals list ── */}
       {loading ? (
         <View style={styles.loadingBox}>
           <ActivityIndicator color={theme.colors.purple} />
@@ -414,8 +403,6 @@ export default function MealPlannerScreen() {
           }
         />
       )}
-
-      {/* ────────────────── MODAL AJOUT ────────────────── */}
       <Modal visible={showAddModal} animationType="slide" transparent onRequestClose={closeAddModal}>
         <KeyboardAvoidingView
           style={styles.modalOverlay}
@@ -429,8 +416,6 @@ export default function MealPlannerScreen() {
                 <Ionicons name="close" size={22} color={theme.colors.textSecondary} />
               </TouchableOpacity>
             </View>
-
-            {/* Tabs */}
             <View style={styles.tabRow}>
               {(["catalog", "search", "manual"] as AddTab[]).map((tab) => (
                 <TouchableOpacity
@@ -449,8 +434,6 @@ export default function MealPlannerScreen() {
                 </TouchableOpacity>
               ))}
             </View>
-
-            {/* ── Catalogue local ── */}
             {addTab === "catalog" && (
               <View style={{ flex: 1 }}>
                 <View style={styles.searchRow}>
@@ -501,8 +484,6 @@ export default function MealPlannerScreen() {
                 </ScrollView>
               </View>
             )}
-
-            {/* ── Recherche TheMealDB ── */}
             {addTab === "search" && (
               <View style={{ flex: 1 }}>
                 <View style={styles.searchRow}>
@@ -575,8 +556,6 @@ export default function MealPlannerScreen() {
                 )}
               </View>
             )}
-
-            {/* ── Manuel ── */}
             {addTab === "manual" && (
               <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
                 <Text style={styles.fieldLabel}>Nom du repas *</Text>
@@ -618,8 +597,6 @@ export default function MealPlannerScreen() {
           </View>
         </KeyboardAvoidingView>
       </Modal>
-
-      {/* ────────────────── MODAL ÉDITION ────────────────── */}
       <Modal
         visible={!!editingMeal}
         animationType="slide"
@@ -680,8 +657,6 @@ export default function MealPlannerScreen() {
     </View>
   );
 }
-
-// ─── Styles ───────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.background },

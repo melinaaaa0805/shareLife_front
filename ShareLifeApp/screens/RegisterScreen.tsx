@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+﻿import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -21,7 +21,6 @@ import { useAuth } from '../context/AuthContext';
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'Register'>;
 
-// ─── Force du mot de passe ────────────────────────────────────────────────────
 type PasswordStrength = { score: number; label: string; color: string };
 
 function getPasswordStrength(password: string): PasswordStrength {
@@ -42,7 +41,6 @@ function isValidEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
 }
 
-// ─── Politique de confidentialité (modal) ─────────────────────────────────────
 function PrivacyModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -84,7 +82,6 @@ function PrivacyModal({ visible, onClose }: { visible: boolean; onClose: () => v
   );
 }
 
-// ─── Écran d'inscription ──────────────────────────────────────────────────────
 export default function RegisterScreen() {
   const navigation = useNavigation<Nav>();
   const { register } = useAuth();
@@ -173,7 +170,6 @@ export default function RegisterScreen() {
         <Text style={styles.subtitle}>Rejoins ShareLife en quelques secondes</Text>
 
         <Animated.View style={{ transform: [{ translateX: shakeAnim }] }}>
-          {/* Prénom */}
           <View style={styles.fieldGroup}>
             <Text style={styles.label}>Prénom</Text>
             <TextInput
@@ -185,10 +181,10 @@ export default function RegisterScreen() {
               autoCapitalize="words"
               textContentType="givenName"
               autoComplete="given-name"
+              accessibilityLabel="Prénom"
+              accessibilityHint="Saisir votre prénom, 2 caractères minimum"
             />
           </View>
-
-          {/* Email */}
           <View style={styles.fieldGroup}>
             <Text style={styles.label}>Email</Text>
             <TextInput
@@ -202,10 +198,9 @@ export default function RegisterScreen() {
               autoCorrect={false}
               textContentType="emailAddress"
               autoComplete="email"
+              accessibilityLabel="Adresse email"
             />
           </View>
-
-          {/* Mot de passe */}
           <View style={styles.fieldGroup}>
             <Text style={styles.label}>Mot de passe</Text>
             <View style={styles.passwordWrapper}>
@@ -218,13 +213,18 @@ export default function RegisterScreen() {
                 secureTextEntry={!showPassword}
                 textContentType="newPassword"
                 autoComplete="new-password"
+                accessibilityLabel="Mot de passe"
+                accessibilityHint="8 caractères minimum, avec majuscule, minuscule et chiffre"
               />
-              <TouchableOpacity onPress={() => setShowPassword(v => !v)} style={styles.eyeBtn}>
+              <TouchableOpacity
+                onPress={() => setShowPassword(v => !v)}
+                style={styles.eyeBtn}
+                accessibilityRole="button"
+                accessibilityLabel={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+              >
                 <Text style={styles.eyeIcon}>{showPassword ? '🙈' : '👁️'}</Text>
               </TouchableOpacity>
             </View>
-
-            {/* Indicateur de force */}
             {password.length > 0 && strength && (
               <View style={styles.strengthRow}>
                 <View style={styles.strengthBars}>
@@ -247,8 +247,6 @@ export default function RegisterScreen() {
               8 caractères min. · 1 majuscule · 1 minuscule · 1 chiffre
             </Text>
           </View>
-
-          {/* Confirmation */}
           <View style={styles.fieldGroup}>
             <Text style={styles.label}>Confirmer le mot de passe</Text>
             <View style={styles.passwordWrapper}>
@@ -261,21 +259,36 @@ export default function RegisterScreen() {
                 secureTextEntry={!showConfirm}
                 textContentType="newPassword"
                 autoComplete="new-password"
+                accessibilityLabel="Confirmer le mot de passe"
               />
-              <TouchableOpacity onPress={() => setShowConfirm(v => !v)} style={styles.eyeBtn}>
+              <TouchableOpacity
+                onPress={() => setShowConfirm(v => !v)}
+                style={styles.eyeBtn}
+                accessibilityRole="button"
+                accessibilityLabel={showConfirm ? 'Masquer la confirmation' : 'Afficher la confirmation'}
+              >
                 <Text style={styles.eyeIcon}>{showConfirm ? '🙈' : '👁️'}</Text>
               </TouchableOpacity>
             </View>
           </View>
 
-          {error && <Text style={styles.errorText}>{error}</Text>}
-
-          {/* Consentements RGPD */}
+          {error && (
+            <Text
+              style={styles.errorText}
+              accessibilityRole="alert"
+              accessibilityLiveRegion="polite"
+            >
+              {error}
+            </Text>
+          )}
           <View style={styles.consentsSection}>
             <TouchableOpacity
               style={styles.checkRow}
               onPress={() => setConsentAge(v => !v)}
               activeOpacity={0.8}
+              accessibilityRole="checkbox"
+              accessibilityLabel="Je confirme avoir au moins 16 ans"
+              accessibilityState={{ checked: consentAge }}
             >
               <View style={[styles.checkbox, consentAge && styles.checkboxChecked]}>
                 {consentAge && <Text style={styles.checkmark}>✓</Text>}
@@ -289,6 +302,9 @@ export default function RegisterScreen() {
               style={styles.checkRow}
               onPress={() => setConsentRgpd(v => !v)}
               activeOpacity={0.8}
+              accessibilityRole="checkbox"
+              accessibilityLabel="J'accepte la politique de confidentialité et le traitement de mes données RGPD"
+              accessibilityState={{ checked: consentRgpd }}
             >
               <View style={[styles.checkbox, consentRgpd && styles.checkboxChecked]}>
                 {consentRgpd && <Text style={styles.checkmark}>✓</Text>}
@@ -298,6 +314,8 @@ export default function RegisterScreen() {
                 <Text
                   style={styles.link}
                   onPress={() => setPrivacyVisible(true)}
+                  accessibilityRole="link"
+                  accessibilityLabel="Lire la politique de confidentialité"
                 >
                   politique de confidentialité
                 </Text>
@@ -306,8 +324,6 @@ export default function RegisterScreen() {
             </TouchableOpacity>
           </View>
         </Animated.View>
-
-        {/* CTA */}
         <Animated.View style={{ transform: [{ scale: btnScale }] }}>
           <Pressable
             style={[styles.registerButton, !canSubmit && styles.buttonDisabled]}
@@ -319,6 +335,9 @@ export default function RegisterScreen() {
               Animated.spring(btnScale, { toValue: 1, useNativeDriver: true, speed: 30 }).start()
             }
             disabled={!canSubmit}
+            accessibilityRole="button"
+            accessibilityLabel={loading ? 'Création du compte en cours' : 'Créer mon compte'}
+            accessibilityState={{ disabled: !canSubmit }}
           >
             <Text style={styles.registerButtonText}>
               {loading ? 'Création…' : 'Créer mon compte'}
@@ -329,6 +348,8 @@ export default function RegisterScreen() {
         <TouchableOpacity
           style={styles.loginLink}
           onPress={() => navigation.navigate('Login' as never)}
+          accessibilityRole="button"
+          accessibilityLabel="Déjà un compte ? Se connecter"
         >
           <Text style={styles.loginLinkText}>Déjà un compte ? Se connecter</Text>
         </TouchableOpacity>

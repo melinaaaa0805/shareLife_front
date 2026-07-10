@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+﻿import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -150,7 +150,6 @@ export default function ForgotPasswordScreen() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {/* Progress indicator */}
         <View style={styles.progressRow}>
           <View style={[styles.progressDot, styles.progressDotActive]} />
           <View style={[styles.progressLine, step === 2 && styles.progressLineActive]} />

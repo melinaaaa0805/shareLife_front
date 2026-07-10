@@ -27,10 +27,11 @@ interface Props {
   expense: Expense;
   currentUserId: string;
   onDelete: (id: string) => void;
+  onEdit: (expense: Expense) => void;
   index: number;
 }
 
-export default function ExpenseCard({ expense, currentUserId, onDelete, index }: Props) {
+export default function ExpenseCard({ expense, currentUserId, onDelete, onEdit, index }: Props) {
   const scale = useRef(new Animated.Value(1)).current;
   const slideAnim = useRef(new Animated.Value(16)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
@@ -98,6 +99,11 @@ export default function ExpenseCard({ expense, currentUserId, onDelete, index }:
           )}
           {iPaid && myShare < expense.amount && (
             <Text style={styles.credited}>+{(expense.amount - myShare).toFixed(2)} €</Text>
+          )}
+          {iPaid && (
+            <Pressable onPress={() => onEdit(expense)} hitSlop={8} style={styles.editBtn}>
+              <Ionicons name="pencil-outline" size={15} color={theme.colors.textSecondary} />
+            </Pressable>
           )}
           {canDelete && (
             <Pressable onPress={() => onDelete(expense.id)} hitSlop={8} style={styles.deleteBtn}>
@@ -174,5 +180,6 @@ const styles = StyleSheet.create({
     fontFamily: theme.typography.fontFamily.medium,
     color: theme.colors.success,
   },
+  editBtn: { marginTop: 2 },
   deleteBtn: { marginTop: 2 },
 });

@@ -1,4 +1,4 @@
-import { Ionicons } from "@expo/vector-icons";
+﻿import { Ionicons } from "@expo/vector-icons";
 import { useIsFocused, useNavigation, useRoute } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import React, { useEffect, useRef, useState } from "react";
@@ -239,7 +239,6 @@ export default function DayTasksScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Header */}
       <Animated.View style={[styles.header, { opacity: headerAnim, paddingTop: insets.top + 8 }]}>
         <View style={styles.headerTopRow}>
           <TouchableOpacity

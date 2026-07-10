@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useCallback } from "react";
+﻿import React, { useEffect, useState, useRef, useCallback } from "react";
 import {
   View,
   Text,
@@ -13,8 +13,6 @@ import { Ionicons } from "@expo/vector-icons";
 import api from "../api/api";
 import { useAuth } from "../context/AuthContext";
 import { theme } from "../assets/style/theme";
-
-// ─── Types ────────────────────────────────────────────────────────────────────
 
 type UnassignedTask = {
   id: string;
@@ -32,8 +30,6 @@ type RouteProps = RouteProp<{ params: { groupId: string } }, "params">;
 const DAYS_SHORT = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
 const WEIGHT_COLORS = ["#4CAF50", "#8BC34A", "#FFC107", "#FF9800", "#F44336"];
 const WEIGHT_EMOJIS = ["😌", "🙂", "😐", "😓", "😵‍💫"];
-
-// ─── Task card ────────────────────────────────────────────────────────────────
 
 function UnassignedCard({
   task,
@@ -63,7 +59,6 @@ function UnassignedCard({
   return (
     <Animated.View style={{ opacity: opacityAnim, transform: [{ translateY: slideAnim }] }}>
       <View style={styles.card}>
-        {/* Top row */}
         <View style={styles.cardHeader}>
           <View style={styles.cardHeaderLeft}>
             <View style={[styles.dayBadge, { backgroundColor: theme.colors.purple + "20" }]}>
@@ -79,8 +74,6 @@ function UnassignedCard({
               <Text style={{ fontSize: 12 }}>{weightEmoji}</Text>
             </View>
           </View>
-
-          {/* Weight dots */}
           <View style={styles.weightDots}>
             {[1, 2, 3, 4, 5].map((n) => (
               <View
@@ -93,14 +86,10 @@ function UnassignedCard({
             ))}
           </View>
         </View>
-
-        {/* Title */}
         <Text style={styles.cardTitle} numberOfLines={2}>{task.title}</Text>
         {task.description ? (
           <Text style={styles.cardDesc} numberOfLines={2}>{task.description}</Text>
         ) : null}
-
-        {/* Take button */}
         <Pressable
           style={({ pressed }) => [styles.takeBtn, taking && styles.takeBtnLoading, pressed && styles.takeBtnPressed]}
           onPress={() => onTake(task.id)}
@@ -123,8 +112,6 @@ function UnassignedCard({
     </Animated.View>
   );
 }
-
-// ─── Main ─────────────────────────────────────────────────────────────────────
 
 export default function UnassignedTasksScreen() {
   const route = useRoute<RouteProps>();
@@ -181,7 +168,6 @@ export default function UnassignedTasksScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Header */}
       <Animated.View style={[styles.header, { opacity: headerAnim }]}>
         <View>
           <Text style={styles.headerTitle}>Tâches disponibles</Text>
@@ -195,8 +181,6 @@ export default function UnassignedTasksScreen() {
           </View>
         )}
       </Animated.View>
-
-      {/* Summary */}
       {tasks.length > 0 && (
         <Animated.View style={[styles.summaryCard, { opacity: headerAnim }]}>
           <View style={styles.summaryItem}>
@@ -218,8 +202,6 @@ export default function UnassignedTasksScreen() {
           </View>
         </Animated.View>
       )}
-
-      {/* List */}
       <ScrollView contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>
         {tasks.length === 0 ? (
           <View style={styles.emptyState}>
@@ -243,8 +225,6 @@ export default function UnassignedTasksScreen() {
     </View>
   );
 }
-
-// ─── Styles ───────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.background },

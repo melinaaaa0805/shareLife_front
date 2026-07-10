@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useCallback } from "react";
+﻿import React, { useEffect, useState, useRef, useCallback } from "react";
 import {
   View,
   Text,
@@ -15,8 +15,6 @@ import { useGroup } from "../context/GroupContext";
 import { useAuth } from "../context/AuthContext";
 import { theme } from "../assets/style/theme";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
 type MyTask = {
   id: string;
   title: string;
@@ -32,8 +30,6 @@ const DAYS_SHORT = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
 
 const WEIGHT_COLORS = ["#4CAF50", "#8BC34A", "#FFC107", "#FF9800", "#F44336"];
 const WEIGHT_LABELS = ["Tranquille", "Ça va", "Moyen", "Courage…", "RELLOU"];
-
-// ─── Task card ────────────────────────────────────────────────────────────────
 
 function TaskCard({ task, index, onToggle }: { task: MyTask; index: number; onToggle: (id: string) => void }) {
   const slideAnim = useRef(new Animated.Value(30)).current;
@@ -68,8 +64,11 @@ function TaskCard({ task, index, onToggle }: { task: MyTask; index: number; onTo
         onPress={handlePress}
         onPressIn={() => Animated.spring(scaleAnim, { toValue: 0.97, useNativeDriver: true, speed: 80 }).start()}
         onPressOut={() => Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true, speed: 50 }).start()}
+        accessibilityRole="button"
+        accessibilityLabel={`Tâche ${task.title}, ${isDone ? 'terminée' : 'en attente'}, poids ${task.weight ?? 1} sur 5`}
+        accessibilityState={{ checked: isDone }}
+        accessibilityHint={isDone ? undefined : 'Appuyer pour marquer comme terminée'}
       >
-        {/* Left accent */}
         <View style={[styles.taskAccent, { backgroundColor: isDone ? theme.colors.success + "60" : weightColor + "80" }]} />
 
         <View style={styles.taskContent}>
@@ -87,7 +86,6 @@ function TaskCard({ task, index, onToggle }: { task: MyTask; index: number; onTo
                 </View>
               )}
             </View>
-            {/* Check button */}
             <Animated.View style={[
               styles.checkBtn,
               { backgroundColor: isDone ? theme.colors.success + "30" : "transparent", borderColor: isDone ? theme.colors.success : theme.colors.border },
@@ -107,8 +105,6 @@ function TaskCard({ task, index, onToggle }: { task: MyTask; index: number; onTo
           {task.description ? (
             <Text style={styles.taskDesc} numberOfLines={1}>{task.description}</Text>
           ) : null}
-
-          {/* Weight bar */}
           <View style={styles.weightRow}>
             <View style={styles.weightBar}>
               {[1, 2, 3, 4, 5].map((n) => (
@@ -131,21 +127,20 @@ function TaskCard({ task, index, onToggle }: { task: MyTask; index: number; onTo
   );
 }
 
-// ─── Filter pill ──────────────────────────────────────────────────────────────
-
 function FilterPill({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
   return (
     <TouchableOpacity
       style={[styles.pill, active && styles.pillActive]}
       onPress={onPress}
       activeOpacity={0.7}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ selected: active }}
     >
       <Text style={[styles.pillText, active && styles.pillTextActive]}>{label}</Text>
     </TouchableOpacity>
   );
 }
-
-// ─── Main ─────────────────────────────────────────────────────────────────────
 
 type Filter = "ALL" | "PENDING" | "DONE";
 
@@ -211,7 +206,6 @@ export default function TasksScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Header */}
       <Animated.View style={[styles.header, { opacity: headerAnim }]}>
         <View>
           <Text style={styles.headerTitle}>Mes tâches</Text>
@@ -225,8 +219,6 @@ export default function TasksScreen() {
           </View>
         </View>
       </Animated.View>
-
-      {/* Progress + stats */}
       <Animated.View style={[styles.statsCard, { opacity: headerAnim }]}>
         <View style={styles.statsRow}>
           <View style={styles.statItem}>
@@ -256,15 +248,11 @@ export default function TasksScreen() {
           {Math.round(pct * 100)}% accompli
         </Text>
       </Animated.View>
-
-      {/* Filters */}
       <Animated.View style={[styles.filters, { opacity: headerAnim }]}>
         <FilterPill label="Toutes" active={filter === "ALL"} onPress={() => setFilter("ALL")} />
         <FilterPill label={`En cours · ${pendingCount}`} active={filter === "PENDING"} onPress={() => setFilter("PENDING")} />
         <FilterPill label={`Terminées · ${doneCount}`} active={filter === "DONE"} onPress={() => setFilter("DONE")} />
       </Animated.View>
-
-      {/* List */}
       <ScrollView
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}
@@ -287,8 +275,6 @@ export default function TasksScreen() {
     </View>
   );
 }
-
-// ─── Styles ───────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.background },
