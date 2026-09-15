@@ -422,7 +422,7 @@ export default function AddTaskScreen() {
               />
             </View>
           )}
-          {animCard(card4Anim, opacities[3],
+          {currentGroup?.mode !== "FREE" && animCard(card4Anim, opacities[3],
             <View style={styles.card}>
               <SectionHeader icon="people-outline" title="Type de tâche" />
               {TASK_TYPES.map((t) => {
