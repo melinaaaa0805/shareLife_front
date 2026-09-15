@@ -272,7 +272,7 @@ export default function GroupDetailScreen() {
                 </View>
               </View>
             )}
-            {group.mode === "FUNNY" && (
+            {group.mode === "FUNNY" && (memberCount > 1 ? (
               <TouchableOpacity
                 style={styles.spinButton}
                 activeOpacity={0.85}
@@ -288,7 +288,14 @@ export default function GroupDetailScreen() {
               >
                 <Text style={styles.spinButtonText}>🎰 Tirer le chef de la semaine</Text>
               </TouchableOpacity>
-            )}
+            ) : (
+              <View style={styles.smartInfoBox}>
+                <Ionicons name="information-circle-outline" size={16} color={theme.colors.mint} />
+                <Text style={styles.smartInfoText}>
+                  Invite au moins un membre pour tirer un chef de la semaine.
+                </Text>
+              </View>
+            ))}
             {group.mode === "SMART" && (
               <>
                 <View style={styles.smartInfoBox}>
