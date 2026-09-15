@@ -133,8 +133,10 @@ function MainTabs() {
             backgroundColor: theme.colors.surface,
             borderTopWidth: 1,
             borderTopColor: theme.colors.border,
-            height: Platform.OS === "ios" ? 82 : 64,
-            paddingBottom: Platform.OS === "ios" ? 22 : 10,
+            height:
+              Platform.OS === "ios" ? 82 : Platform.OS === "web" ? 76 : 64,
+            paddingBottom:
+              Platform.OS === "ios" ? 22 : Platform.OS === "web" ? 14 : 10,
             paddingTop: 8,
           },
           tabBarActiveTintColor: theme.colors.purple,
