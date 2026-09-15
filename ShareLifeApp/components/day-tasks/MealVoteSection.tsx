@@ -91,6 +91,12 @@ export default function MealVoteSection({
                     <TouchableOpacity
                       style={[styles.voteBtn, isVoted && styles.voteBtnActive]}
                       onPress={() => onVote(meal.id)}
+                      accessibilityRole="button"
+                      accessibilityLabel={
+                        isVoted
+                          ? `Retirer mon vote pour ${meal.name}`
+                          : `Voter pour ${meal.name}`
+                      }
                     >
                       <Ionicons
                         name={isVoted ? "heart" : "heart-outline"}
@@ -98,7 +104,12 @@ export default function MealVoteSection({
                         color={isVoted ? "#FFF" : theme.colors.textSecondary}
                       />
                     </TouchableOpacity>
-                    <TouchableOpacity style={styles.cartBtn} onPress={() => onAddToShopping(meal)}>
+                    <TouchableOpacity
+                      style={styles.cartBtn}
+                      onPress={() => onAddToShopping(meal)}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Ajouter ${meal.name} à la liste de courses`}
+                    >
                       <Ionicons name="cart-outline" size={14} color={theme.colors.mint} />
                     </TouchableOpacity>
                   </View>

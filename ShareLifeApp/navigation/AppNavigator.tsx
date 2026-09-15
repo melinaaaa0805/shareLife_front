@@ -58,6 +58,8 @@ function BackButton() {
       onPress={() => navigation.goBack()}
       style={navStyles.backBtn}
       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+      accessibilityRole="button"
+      accessibilityLabel="Retour"
     >
       <Ionicons
         name="chevron-back"
@@ -95,6 +97,8 @@ function GroupTabsHeader() {
         style={navStyles.groupHeaderBack}
         onPress={() => navigation.navigate("Groups")}
         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        accessibilityRole="button"
+        accessibilityLabel="Retour aux groupes"
       >
         <Ionicons name="chevron-back" size={18} color={theme.colors.purple} />
       </TouchableOpacity>
@@ -111,6 +115,8 @@ function GroupTabsHeader() {
             : undefined
         }
         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        accessibilityRole="button"
+        accessibilityLabel="Paramètres du groupe"
       >
         <Ionicons
           name="settings-outline"
